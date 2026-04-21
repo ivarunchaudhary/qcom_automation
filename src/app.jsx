@@ -142,11 +142,11 @@ function UploadScreen({ onLoad, isPending }) {
     <div className="upload-page">
       <div className="upload-layout">
         <section className="upload-hero">
-          <div className="upload-mark">IM</div>
+          <div className="upload-mark">IS</div>
           <div className="upload-copy">
-            <p className="eyebrow">Instamart performance workspace</p>
+            <p className="eyebrow">InstaSmarty performance workspace</p>
             <h1 className="upload-title">
-              Clean campaign analytics for faster budget calls.
+              InstaSmarty
             </h1>
             <p className="upload-subtitle">
               Drop in the Swiggy Instamart granular export and review a sharper,
@@ -233,11 +233,6 @@ function UploadScreen({ onLoad, isPending }) {
 
           {error ? <p className="error-copy">{error}</p> : null}
 
-          <div className="upload-footnote">
-            <span className="upload-footnote__pill">Columns auto-detected</span>
-            <span className="upload-footnote__pill">Date filtering included</span>
-            <span className="upload-footnote__pill">No extra setup</span>
-          </div>
         </section>
       </div>
     </div>

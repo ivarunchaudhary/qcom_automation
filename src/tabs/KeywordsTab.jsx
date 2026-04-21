@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useTransition } from "react";
+import { memo, useMemo, useRef, useState, useTransition } from "react";
 import {
   Bar,
   BarChart,
@@ -31,17 +31,128 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
+const KEYWORD_SUMMARY_COLUMNS = [
+  { key: "key", label: "Keyword", type: "string", right: false, format: (row) => row.key },
+  { key: "spend", label: "Spend", type: "number", right: true, format: (row) => fmt.inr(row.spend) },
+  { key: "gmv", label: "GMV", type: "number", right: true, format: (row) => fmt.inr(row.gmv) },
+  { key: "roas", label: "ROAS", type: "number", right: true, format: (row) => fmt.x(row.roas) },
+  { key: "imp", label: "Impr.", type: "number", right: true, format: (row) => fmt.num(row.imp) },
+  { key: "clks", label: "Clicks", type: "number", right: true, format: (row) => fmt.num(row.clks) },
+  { key: "ctr", label: "CTR", type: "number", right: true, format: (row) => fmt.pct(row.ctr) },
+  { key: "a2c", label: "ATC", type: "number", right: true, format: (row) => fmt.num(row.a2c) },
+  { key: "atcr", label: "ATCR", type: "number", right: true, format: (row) => fmt.pct(row.atcr) },
+  { key: "conv", label: "Conv.", type: "number", right: true, format: (row) => fmt.num(row.conv) },
+  { key: "cvr", label: "CVR", type: "number", right: true, format: (row) => fmt.pct(row.cvr) },
+  { key: "cpo", label: "CPO", type: "number", right: true, format: (row) => fmt.inr(row.cpo) },
+  { key: "aov", label: "AOV", type: "number", right: true, format: (row) => fmt.inr(row.aov) },
+];
+
+const KEYWORD_SUMMARY_EXPORT_NAME = "keyword-summary";
+const COPY_FEEDBACK_MS = 1200;
+
+function copyTextWithFallback(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
+}
+
 function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) {
   const [keywordSort, setKeywordSort] = useState("spend");
+  const [summarySortKey, setSummarySortKey] = useState("spend");
+  const [summarySortDirection, setSummarySortDirection] = useState("desc");
+  const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
+  const copyResetTimerRef = useRef(0);
 
   const keywords = useMemo(
     () => orderByMetric(rawKeywords, keywordSort),
     [rawKeywords, keywordSort],
   );
+  const sortedSummaryRows = useMemo(() => {
+    const rows = [...rawKeywords];
+    const sortColumn = KEYWORD_SUMMARY_COLUMNS.find((column) => column.key === summarySortKey) || KEYWORD_SUMMARY_COLUMNS[0];
+    const directionFactor = summarySortDirection === "asc" ? 1 : -1;
 
-  const visibleRows = expanded ? keywords : keywords.slice(0, TABLE_PREVIEW_LIMIT);
+    rows.sort((left, right) => {
+      if (sortColumn.type === "string") {
+        return directionFactor * left[sortColumn.key].localeCompare(right[sortColumn.key]);
+      }
+      return directionFactor * ((left[sortColumn.key] || 0) - (right[sortColumn.key] || 0));
+    });
+
+    return rows;
+  }, [rawKeywords, summarySortDirection, summarySortKey]);
+
+  const visibleRows = expanded ? sortedSummaryRows : sortedSummaryRows.slice(0, TABLE_PREVIEW_LIMIT);
+
+  const handleSummarySort = (column) => {
+    startTransition(() => {
+      if (summarySortKey === column.key) {
+        setSummarySortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
+        return;
+      }
+
+      setSummarySortKey(column.key);
+      setSummarySortDirection(column.type === "number" ? "desc" : "asc");
+    });
+  };
+
+  const handleCopySummary = async () => {
+    const headers = KEYWORD_SUMMARY_COLUMNS.map((column) => column.label);
+    const payload = [
+      headers.join("\t"),
+      ...sortedSummaryRows.map((row) =>
+        KEYWORD_SUMMARY_COLUMNS.map((column) => column.format(row)).join("\t"),
+      ),
+    ].join("\n");
+    let copied = false;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+        copied = true;
+      }
+    } catch {
+      // fall back to legacy copy path below
+    }
+
+    if (!copied) {
+      copied = copyTextWithFallback(payload);
+    }
+
+    if (copied) {
+      setIsCopyConfirmed(true);
+      window.clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setIsCopyConfirmed(false);
+      }, COPY_FEEDBACK_MS);
+    }
+  };
+
+  const handleExportSummary = async () => {
+    const headers = KEYWORD_SUMMARY_COLUMNS.map((column) => column.label);
+    const rowsForExport = sortedSummaryRows.map((row) =>
+      KEYWORD_SUMMARY_COLUMNS.reduce((acc, column) => {
+        acc[column.label] = column.format(row);
+        return acc;
+      }, {}),
+    );
+
+    const xlsx = await import("xlsx");
+    const worksheet = xlsx.utils.json_to_sheet(rowsForExport, { header: headers });
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Keyword Summary");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    xlsx.writeFile(workbook, `${KEYWORD_SUMMARY_EXPORT_NAME}-${dateStamp}.xlsx`);
+  };
 
   return (
     <div className="tab-content">
@@ -180,24 +291,51 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
         </ResponsiveContainer>
       </Panel>
 
-      <SectionHeader title="All keywords" sub="Complete keyword register across the selected window." />
+      <SectionHeader
+        title="All keywords"
+        sub="Complete keyword register across the selected window."
+        action={
+          <div className="table-actions">
+            <button
+              type="button"
+              className={`ghost-button table-action-copy${isCopyConfirmed ? " is-copied" : ""}`}
+              onClick={handleCopySummary}
+              disabled={!sortedSummaryRows.length}
+            >
+              Copy table
+              <span className="table-action-copy__tick" aria-hidden="true">✓</span>
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={handleExportSummary}
+              disabled={!sortedSummaryRows.length}
+            >
+              Export XLSX
+            </button>
+          </div>
+        }
+      />
       <Panel className="table-panel">
         <table className="data-table">
           <thead>
             <tr>
-              <Th>Keyword</Th>
-              <Th right>Spend</Th>
-              <Th right>GMV</Th>
-              <Th right>ROAS</Th>
-              <Th right>Impr.</Th>
-              <Th right>Clicks</Th>
-              <Th right>CTR</Th>
-              <Th right>ATC</Th>
-              <Th right>ATCR</Th>
-              <Th right>Conv.</Th>
-              <Th right>CVR</Th>
-              <Th right>CPO</Th>
-              <Th right>AOV</Th>
+              {KEYWORD_SUMMARY_COLUMNS.map((column) => (
+                <Th key={column.key} right={column.right}>
+                  <button
+                    type="button"
+                    className={`table-sort-button${summarySortKey === column.key ? " is-active" : ""}`}
+                    onClick={() => handleSummarySort(column)}
+                  >
+                    {column.label}
+                    {summarySortKey === column.key
+                      ? summarySortDirection === "asc"
+                        ? " ↑"
+                        : " ↓"
+                      : ""}
+                  </button>
+                </Th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -226,7 +364,7 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
           </tbody>
         </table>
         <TableFooter
-          total={keywords.length}
+          total={sortedSummaryRows.length}
           shown={visibleRows.length}
           expanded={expanded}
           label="keywords"

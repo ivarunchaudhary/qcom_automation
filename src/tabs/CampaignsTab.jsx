@@ -1,28 +1,11 @@
-import { memo, useMemo, useState, useTransition } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { memo, useMemo, useRef, useState, useTransition } from "react";
 import {
   BRAND_COLORS,
   CAMPAIGN_SORT_OPTIONS,
-  CHART_GRID,
   TABLE_PREVIEW_LIMIT,
-  axisTick,
-  chartLegendStyle,
   cleanAdTypeLabel,
   cleanCampaignName,
   fmt,
-  orderByMetric,
   roasTone,
 } from "../lib/metrics.js";
 import {
@@ -33,35 +16,73 @@ import {
   TableFooter,
   Td,
   Th,
-  TooltipCard,
 } from "../lib/ui.jsx";
+
+const CAMPAIGN_SUMMARY_COLUMNS = [
+  { key: "key", label: "Campaign", type: "string", right: false, format: (row) => cleanCampaignName(row.key) },
+  { key: "spend", label: "Spend", type: "number", right: true, format: (row) => fmt.inr(row.spend) },
+  { key: "gmv", label: "GMV", type: "number", right: true, format: (row) => fmt.inr(row.gmv) },
+  { key: "roas", label: "ROAS", type: "number", right: true, format: (row) => fmt.x(row.roas) },
+  { key: "imp", label: "Impr.", type: "number", right: true, format: (row) => fmt.num(row.imp) },
+  { key: "clks", label: "Clicks", type: "number", right: true, format: (row) => fmt.num(row.clks) },
+  { key: "a2c", label: "ATC", type: "number", right: true, format: (row) => fmt.num(row.a2c) },
+  { key: "conv", label: "Conv.", type: "number", right: true, format: (row) => fmt.num(row.conv) },
+  { key: "cpo", label: "CPO", type: "number", right: true, format: (row) => fmt.inr(row.cpo) },
+  { key: "aov", label: "AOV", type: "number", right: true, format: (row) => fmt.inr(row.aov) },
+  { key: "cpc", label: "CPC", type: "number", right: true, format: (row) => fmt.inr2(row.cpc) },
+];
+
+const CAMPAIGN_SUMMARY_EXPORT_NAME = "campaign-summary";
+const COPY_FEEDBACK_MS = 1200;
+
+function copyTextWithFallback(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
+}
+
+function sortCampaignRows(rows, sortKey, sortDirection) {
+  const directionFactor = sortDirection === -1 ? -1 : 1;
+  const sortedRows = [...rows];
+
+  sortedRows.sort((left, right) => {
+    if (sortKey === "key") {
+      return directionFactor * cleanCampaignName(left.key).localeCompare(cleanCampaignName(right.key));
+    }
+    return directionFactor * ((left[sortKey] || 0) - (right[sortKey] || 0));
+  });
+
+  return sortedRows;
+}
 
 function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaigns }) {
   const [campaignSort, setCampaignSort] = useState("spend");
   const [campaignSortDir, setCampaignSortDir] = useState(-1);
+  const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
+  const copyResetTimerRef = useRef(0);
 
   const campaigns = useMemo(
-    () => orderByMetric(rawCampaigns, campaignSort, campaignSortDir),
+    () => sortCampaignRows(rawCampaigns, campaignSort, campaignSortDir),
     [rawCampaigns, campaignSort, campaignSortDir],
   );
 
-  const campaignScatterSeries = useMemo(() => {
-    const brandSeries = new Map();
-
-    campaigns.forEach((campaign) => {
-      const seriesKey = campaign.brand || "Other";
-      const series = brandSeries.get(seriesKey);
-      if (series) {
-        series.push(campaign);
-        return;
-      }
-      brandSeries.set(seriesKey, [campaign]);
-    });
-
-    return Array.from(brandSeries, ([brand, seriesData]) => ({ brand, data: seriesData }));
-  }, [campaigns]);
+  const sortedBleedingCampaigns = useMemo(
+    () => sortCampaignRows(bleedingCampaigns, campaignSort, campaignSortDir),
+    [bleedingCampaigns, campaignSort, campaignSortDir],
+  );
+  const sortedStarCampaigns = useMemo(
+    () => sortCampaignRows(starCampaigns, campaignSort, campaignSortDir),
+    [starCampaigns, campaignSort, campaignSortDir],
+  );
 
   const visibleRows = expanded ? campaigns : campaigns.slice(0, TABLE_PREVIEW_LIMIT);
 
@@ -74,6 +95,67 @@ function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaign
       setCampaignSort(metric);
       setCampaignSortDir(-1);
     });
+  };
+
+  const handleSummarySort = (column) => {
+    startTransition(() => {
+      if (campaignSort === column.key) {
+        setCampaignSortDir((currentDirection) => currentDirection * -1);
+        return;
+      }
+
+      setCampaignSort(column.key);
+      setCampaignSortDir(column.type === "number" ? -1 : 1);
+    });
+  };
+
+  const handleCopySummary = async () => {
+    const headers = CAMPAIGN_SUMMARY_COLUMNS.map((column) => column.label);
+    const payload = [
+      headers.join("\t"),
+      ...campaigns.map((row) =>
+        CAMPAIGN_SUMMARY_COLUMNS.map((column) => column.format(row)).join("\t"),
+      ),
+    ].join("\n");
+    let copied = false;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+        copied = true;
+      }
+    } catch {
+      // fall back to legacy copy path below
+    }
+
+    if (!copied) {
+      copied = copyTextWithFallback(payload);
+    }
+
+    if (copied) {
+      setIsCopyConfirmed(true);
+      window.clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setIsCopyConfirmed(false);
+      }, COPY_FEEDBACK_MS);
+    }
+  };
+
+  const handleExportSummary = async () => {
+    const headers = CAMPAIGN_SUMMARY_COLUMNS.map((column) => column.label);
+    const rowsForExport = campaigns.map((row) =>
+      CAMPAIGN_SUMMARY_COLUMNS.reduce((acc, column) => {
+        acc[column.label] = column.format(row);
+        return acc;
+      }, {}),
+    );
+
+    const xlsx = await import("xlsx");
+    const worksheet = xlsx.utils.json_to_sheet(rowsForExport, { header: headers });
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Campaign Summary");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    xlsx.writeFile(workbook, `${CAMPAIGN_SUMMARY_EXPORT_NAME}-${dateStamp}.xlsx`);
   };
 
   return (
@@ -119,7 +201,7 @@ function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaign
                 </tr>
               </thead>
               <tbody>
-                {bleedingCampaigns.slice(0, 8).map((campaign) => (
+                {sortedBleedingCampaigns.slice(0, 8).map((campaign) => (
                   <tr key={campaign.key}>
                     <Td>
                       <div className="table-title">{cleanCampaignName(campaign.key)}</div>
@@ -158,7 +240,7 @@ function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaign
                 </tr>
               </thead>
               <tbody>
-                {starCampaigns.slice(0, 8).map((campaign) => (
+                {sortedStarCampaigns.slice(0, 8).map((campaign) => (
                   <tr key={campaign.key}>
                     <Td>
                       <div className="table-title">{cleanCampaignName(campaign.key)}</div>
@@ -178,85 +260,47 @@ function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaign
         </Panel>
       </div>
 
-      <SectionHeader title="Campaign positioning" sub="Bottom-right is efficient scale, top-left needs review." />
-      <Panel>
-        <ResponsiveContainer width="100%" height={340}>
-          <ScatterChart>
-            <CartesianGrid stroke={CHART_GRID} strokeDasharray="4 4" />
-            <XAxis
-              type="number"
-              dataKey="spend"
-              name="Spend"
-              tick={axisTick}
-              stroke={CHART_GRID}
-              tickFormatter={fmt.inr}
-            />
-            <YAxis
-              type="number"
-              dataKey="roas"
-              name="ROAS"
-              tick={axisTick}
-              stroke={CHART_GRID}
-              tickFormatter={(value) => `${value}x`}
-            />
-            <Tooltip
-              cursor={{ stroke: "#d8ccbb", strokeDasharray: "4 4" }}
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const point = payload[0]?.payload;
-                return (
-                  <div className="chart-tooltip">
-                    <p className="chart-tooltip__label">{point.brand}</p>
-                    <div className="chart-tooltip__row">
-                      <span className="chart-tooltip__name">{cleanCampaignName(point.key)}</span>
-                    </div>
-                    <div className="chart-tooltip__row">
-                      <span className="chart-tooltip__name">Spend</span>
-                      <span className="chart-tooltip__value">{fmt.inrFull(point.spend)}</span>
-                    </div>
-                    <div className="chart-tooltip__row">
-                      <span className="chart-tooltip__name">ROAS</span>
-                      <span className="chart-tooltip__value">{fmt.x(point.roas)}</span>
-                    </div>
-                    <div className="chart-tooltip__row">
-                      <span className="chart-tooltip__name">Conversions</span>
-                      <span className="chart-tooltip__value">{fmt.num(point.conv)}</span>
-                    </div>
-                  </div>
-                );
-              }}
-            />
-            {campaignScatterSeries.map(({ brand, data: brandCampaigns }) => (
-              <Scatter
-                key={brand}
-                name={brand}
-                data={brandCampaigns}
-                fill={BRAND_COLORS[brand] || "#9a8e83"}
-                opacity={0.78}
-                isAnimationActive={false}
-              />
-            ))}
-            <Legend wrapperStyle={chartLegendStyle} />
-          </ScatterChart>
-        </ResponsiveContainer>
-      </Panel>
-
-      <SectionHeader title="All campaigns" sub="Full campaign register for deeper checks." />
+      <SectionHeader
+        title="All campaigns"
+        sub="Full campaign register for deeper checks."
+        action={
+          <div className="table-actions">
+            <button
+              type="button"
+              className={`ghost-button table-action-copy${isCopyConfirmed ? " is-copied" : ""}`}
+              onClick={handleCopySummary}
+              disabled={!campaigns.length}
+            >
+              Copy table
+              <span className="table-action-copy__tick" aria-hidden="true">✓</span>
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={handleExportSummary}
+              disabled={!campaigns.length}
+            >
+              Export XLSX
+            </button>
+          </div>
+        }
+      />
       <Panel className="table-panel">
         <table className="data-table">
           <thead>
             <tr>
-              <Th>Campaign</Th>
-              <Th right>Spend</Th>
-              <Th right>GMV</Th>
-              <Th right>ROAS</Th>
-              <Th right>Impr.</Th>
-              <Th right>Clicks</Th>
-              <Th right>ATC</Th>
-              <Th right>Conv.</Th>
-              <Th right>CPO</Th>
-              <Th right>AOV</Th>
-              <Th right>CPC</Th>
+              {CAMPAIGN_SUMMARY_COLUMNS.map((column) => (
+                <Th key={column.key} right={column.right}>
+                  <button
+                    type="button"
+                    className={`table-sort-button${campaignSort === column.key ? " is-active" : ""}`}
+                    onClick={() => handleSummarySort(column)}
+                  >
+                    {column.label}
+                    {campaignSort === column.key ? (campaignSortDir === -1 ? " ↓" : " ↑") : ""}
+                  </button>
+                </Th>
+              ))}
               <Th>Health</Th>
             </tr>
           </thead>
