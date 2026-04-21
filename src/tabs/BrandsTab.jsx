@@ -48,20 +48,20 @@ const BRAND_CHART_METRICS = [
 ];
 
 const BRAND_SUMMARY_COLUMNS = [
-  { key: "key", label: "Brand" },
-  { key: "spend", label: "Spend" },
-  { key: "gmv", label: "GMV" },
-  { key: "roas", label: "ROAS" },
-  { key: "imp", label: "Impressions" },
-  { key: "clks", label: "Clicks" },
-  { key: "ctr", label: "CTR" },
-  { key: "a2c", label: "ATC" },
-  { key: "atcr", label: "ATCR" },
-  { key: "conv", label: "Conv." },
-  { key: "cvr", label: "CVR" },
-  { key: "cpo", label: "CPO" },
-  { key: "aov", label: "AOV" },
-  { key: "cpc", label: "CPC" },
+  { key: "key", label: "Brand", type: "string", format: (row) => row.key },
+  { key: "spend", label: "Spend", type: "number", format: (row) => formatAbsoluteCurrency(row.spend) },
+  { key: "gmv", label: "GMV", type: "number", format: (row) => formatAbsoluteCurrency(row.gmv) },
+  { key: "roas", label: "ROAS", type: "number", format: (row) => fmt.dec2(row.roas) },
+  { key: "imp", label: "Impressions", type: "number", format: (row) => fmt.num(row.imp) },
+  { key: "clks", label: "Clicks", type: "number", format: (row) => fmt.num(row.clks) },
+  { key: "ctr", label: "CTR", type: "number", format: (row) => fmt.pct(row.ctr) },
+  { key: "a2c", label: "ATC", type: "number", format: (row) => fmt.num(row.a2c) },
+  { key: "atcr", label: "ATCR", type: "number", format: (row) => fmt.pct(row.atcr) },
+  { key: "conv", label: "Conv.", type: "number", format: (row) => fmt.num(row.conv) },
+  { key: "cvr", label: "CVR", type: "number", format: (row) => fmt.pct(row.cvr) },
+  { key: "cpo", label: "CPO", type: "number", format: (row) => formatAbsoluteCurrency(row.cpo) },
+  { key: "aov", label: "AOV", type: "number", format: (row) => formatAbsoluteCurrency(row.aov) },
+  { key: "cpc", label: "CPC", type: "number", format: (row) => formatAbsoluteCurrency2(row.cpc) },
 ];
 
 const BRAND_SUMMARY_EXPORT_NAME = "brand-summary";
@@ -85,6 +85,8 @@ function copyTextWithFallback(text) {
 
 function BrandsTab({ brands, kpis }) {
   const [brandChartMetricKey, setBrandChartMetricKey] = useState("roas");
+  const [brandSummarySortKey, setBrandSummarySortKey] = useState("spend");
+  const [brandSummarySortDirection, setBrandSummarySortDirection] = useState("desc");
   const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [, startTransition] = useTransition();
   const copyResetTimerRef = useRef(0);
@@ -107,30 +109,54 @@ function BrandsTab({ brands, kpis }) {
     () =>
       brands.map((brand) => ({
         key: brand.key,
-        spend: formatAbsoluteCurrency(brand.spend),
-        gmv: formatAbsoluteCurrency(brand.gmv),
-        roas: fmt.dec2(brand.roas),
-        roasColor: roasTone(brand.roas).color,
-        imp: fmt.num(brand.imp),
-        clks: fmt.num(brand.clks),
-        ctr: fmt.pct(brand.ctr),
-        a2c: fmt.num(brand.a2c),
-        atcr: fmt.pct(brand.atcr),
-        conv: fmt.num(brand.conv),
-        cvr: fmt.pct(brand.cvr),
-        cpo: formatAbsoluteCurrency(brand.cpo),
-        aov: formatAbsoluteCurrency(brand.aov),
-        cpc: formatAbsoluteCurrency2(brand.cpc),
+        spend: brand.spend,
+        gmv: brand.gmv,
+        roas: brand.roas,
+        imp: brand.imp,
+        clks: brand.clks,
+        ctr: brand.ctr,
+        a2c: brand.a2c,
+        atcr: brand.atcr,
+        conv: brand.conv,
+        cvr: brand.cvr,
+        cpo: brand.cpo,
+        aov: brand.aov,
+        cpc: brand.cpc,
       })),
     [brands],
   );
+
+  const sortedBrandSummaryRows = useMemo(() => {
+    const rows = [...brandSummaryRows];
+    const sortColumn = BRAND_SUMMARY_COLUMNS.find((column) => column.key === brandSummarySortKey) || BRAND_SUMMARY_COLUMNS[0];
+    const directionFactor = brandSummarySortDirection === "asc" ? 1 : -1;
+
+    rows.sort((left, right) => {
+      if (sortColumn.type === "string") {
+        return directionFactor * left[sortColumn.key].localeCompare(right[sortColumn.key]);
+      }
+      return directionFactor * ((left[sortColumn.key] || 0) - (right[sortColumn.key] || 0));
+    });
+
+    return rows;
+  }, [brandSummaryRows, brandSummarySortDirection, brandSummarySortKey]);
+
+  const handleBrandSummarySort = (column) => {
+    if (brandSummarySortKey === column.key) {
+      setBrandSummarySortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setBrandSummarySortKey(column.key);
+    setBrandSummarySortDirection(column.type === "string" ? "asc" : "desc");
+  };
 
   const handleCopyBrandSummary = async () => {
     const headers = BRAND_SUMMARY_COLUMNS.map((column) => column.label);
     const payload = [
       headers.join("\t"),
-      ...brandSummaryRows.map((row) =>
-        BRAND_SUMMARY_COLUMNS.map((column) => row[column.key]).join("\t"),
+      ...sortedBrandSummaryRows.map((row) =>
+        BRAND_SUMMARY_COLUMNS.map((column) => column.format(row)).join("\t"),
       ),
     ].join("\n");
     let copied = false;
@@ -159,9 +185,9 @@ function BrandsTab({ brands, kpis }) {
 
   const handleExportBrandSummary = async () => {
     const headers = BRAND_SUMMARY_COLUMNS.map((column) => column.label);
-    const rowsForExport = brandSummaryRows.map((row) =>
+    const rowsForExport = sortedBrandSummaryRows.map((row) =>
       BRAND_SUMMARY_COLUMNS.reduce((acc, column) => {
-        acc[column.label] = row[column.key];
+        acc[column.label] = column.format(row);
         return acc;
       }, {}),
     );
@@ -323,7 +349,7 @@ function BrandsTab({ brands, kpis }) {
               type="button"
               className={`ghost-button table-action-copy${isCopyConfirmed ? " is-copied" : ""}`}
               onClick={handleCopyBrandSummary}
-              disabled={!brandSummaryRows.length}
+              disabled={!sortedBrandSummaryRows.length}
             >
               Copy table
               <span className="table-action-copy__tick" aria-hidden="true">✓</span>
@@ -332,7 +358,7 @@ function BrandsTab({ brands, kpis }) {
               type="button"
               className="ghost-button"
               onClick={handleExportBrandSummary}
-              disabled={!brandSummaryRows.length}
+              disabled={!sortedBrandSummaryRows.length}
             >
               Export XLSX
             </button>
@@ -345,30 +371,39 @@ function BrandsTab({ brands, kpis }) {
             <tr>
               {BRAND_SUMMARY_COLUMNS.map((column) => (
                 <Th key={column.key} right={column.key !== "key"}>
-                  {column.label}
+                  <button
+                    type="button"
+                    className={`table-sort-button${brandSummarySortKey === column.key ? " is-active" : ""}`}
+                    onClick={() => handleBrandSummarySort(column)}
+                  >
+                    {column.label}
+                    {brandSummarySortKey === column.key
+                      ? brandSummarySortDirection === "asc"
+                        ? " ↑"
+                        : " ↓"
+                      : ""}
+                  </button>
                 </Th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {brandSummaryRows.map((row) => (
+            {sortedBrandSummaryRows.map((row) => (
               <tr key={row.key}>
                 <Td>{row.key}</Td>
-                <Td right>{row.spend}</Td>
-                <Td right>{row.gmv}</Td>
-                <Td right accent color={row.roasColor}>
-                  {row.roas}
-                </Td>
+                <Td right>{formatAbsoluteCurrency(row.spend)}</Td>
+                <Td right>{formatAbsoluteCurrency(row.gmv)}</Td>
+                <Td right accent color={roasTone(row.roas).color}>{fmt.dec2(row.roas)}</Td>
                 <Td right>{row.imp}</Td>
-                <Td right>{row.clks}</Td>
-                <Td right>{row.ctr}</Td>
-                <Td right>{row.a2c}</Td>
-                <Td right>{row.atcr}</Td>
-                <Td right>{row.conv}</Td>
-                <Td right>{row.cvr}</Td>
-                <Td right>{row.cpo}</Td>
-                <Td right>{row.aov}</Td>
-                <Td right>{row.cpc}</Td>
+                <Td right>{fmt.num(row.clks)}</Td>
+                <Td right>{fmt.pct(row.ctr)}</Td>
+                <Td right>{fmt.num(row.a2c)}</Td>
+                <Td right>{fmt.pct(row.atcr)}</Td>
+                <Td right>{fmt.num(row.conv)}</Td>
+                <Td right>{fmt.pct(row.cvr)}</Td>
+                <Td right>{formatAbsoluteCurrency(row.cpo)}</Td>
+                <Td right>{formatAbsoluteCurrency(row.aov)}</Td>
+                <Td right>{formatAbsoluteCurrency2(row.cpc)}</Td>
               </tr>
             ))}
           </tbody>

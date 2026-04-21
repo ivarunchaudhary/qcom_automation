@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useTransition } from "react";
+import { memo, useMemo, useRef, useState, useTransition } from "react";
 import {
   Bar,
   BarChart,
@@ -27,15 +27,123 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
+const CITY_SUMMARY_COLUMNS = [
+  { key: "key", label: "City", type: "string", right: false, format: (row) => row.key },
+  { key: "spend", label: "Spend", type: "number", right: true, format: (row) => fmt.inr(row.spend) },
+  { key: "gmv", label: "GMV", type: "number", right: true, format: (row) => fmt.inr(row.gmv) },
+  { key: "roas", label: "ROAS", type: "number", right: true, format: (row) => fmt.x(row.roas) },
+  { key: "imp", label: "Impr.", type: "number", right: true, format: (row) => fmt.num(row.imp) },
+  { key: "clks", label: "Clicks", type: "number", right: true, format: (row) => fmt.num(row.clks) },
+  { key: "a2c", label: "ATC", type: "number", right: true, format: (row) => fmt.num(row.a2c) },
+  { key: "conv", label: "Conv.", type: "number", right: true, format: (row) => fmt.num(row.conv) },
+  { key: "cpo", label: "CPO", type: "number", right: true, format: (row) => fmt.inr(row.cpo) },
+  { key: "aov", label: "AOV", type: "number", right: true, format: (row) => fmt.inr(row.aov) },
+];
+
+const CITY_SUMMARY_EXPORT_NAME = "geo-summary";
+const COPY_FEEDBACK_MS = 1200;
+
+function copyTextWithFallback(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
+}
+
 function GeoTab({ cities: rawCities }) {
+  const [summarySortKey, setSummarySortKey] = useState("spend");
+  const [summarySortDirection, setSummarySortDirection] = useState("desc");
+  const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
+  const copyResetTimerRef = useRef(0);
 
   const cities = useMemo(() => orderByMetric(rawCities, "spend"), [rawCities]);
   const citiesByRoas = useMemo(() => [...cities].sort((a, b) => b.roas - a.roas), [cities]);
   const citySpendLeaders = useMemo(() => cities.slice(0, 12), [cities]);
   const cityRoasLeaders = useMemo(() => citiesByRoas.slice(0, 12), [citiesByRoas]);
-  const visibleRows = expanded ? cities : cities.slice(0, TABLE_PREVIEW_LIMIT);
+  const sortedSummaryRows = useMemo(() => {
+    const rows = [...rawCities];
+    const sortColumn = CITY_SUMMARY_COLUMNS.find((column) => column.key === summarySortKey) || CITY_SUMMARY_COLUMNS[0];
+    const directionFactor = summarySortDirection === "asc" ? 1 : -1;
+
+    rows.sort((left, right) => {
+      if (sortColumn.type === "string") {
+        return directionFactor * left[sortColumn.key].localeCompare(right[sortColumn.key]);
+      }
+      return directionFactor * ((left[sortColumn.key] || 0) - (right[sortColumn.key] || 0));
+    });
+
+    return rows;
+  }, [rawCities, summarySortDirection, summarySortKey]);
+  const visibleRows = expanded ? sortedSummaryRows : sortedSummaryRows.slice(0, TABLE_PREVIEW_LIMIT);
+
+  const handleSummarySort = (column) => {
+    startTransition(() => {
+      if (summarySortKey === column.key) {
+        setSummarySortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
+        return;
+      }
+
+      setSummarySortKey(column.key);
+      setSummarySortDirection(column.type === "number" ? "desc" : "asc");
+    });
+  };
+
+  const handleCopySummary = async () => {
+    const headers = CITY_SUMMARY_COLUMNS.map((column) => column.label);
+    const payload = [
+      headers.join("\t"),
+      ...sortedSummaryRows.map((row) =>
+        CITY_SUMMARY_COLUMNS.map((column) => column.format(row)).join("\t"),
+      ),
+    ].join("\n");
+    let copied = false;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+        copied = true;
+      }
+    } catch {
+      // fall back to legacy copy path below
+    }
+
+    if (!copied) {
+      copied = copyTextWithFallback(payload);
+    }
+
+    if (copied) {
+      setIsCopyConfirmed(true);
+      window.clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setIsCopyConfirmed(false);
+      }, COPY_FEEDBACK_MS);
+    }
+  };
+
+  const handleExportSummary = async () => {
+    const headers = CITY_SUMMARY_COLUMNS.map((column) => column.label);
+    const rowsForExport = sortedSummaryRows.map((row) =>
+      CITY_SUMMARY_COLUMNS.reduce((acc, column) => {
+        acc[column.label] = column.format(row);
+        return acc;
+      }, {}),
+    );
+
+    const xlsx = await import("xlsx");
+    const worksheet = xlsx.utils.json_to_sheet(rowsForExport, { header: headers });
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Geo Summary");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    xlsx.writeFile(workbook, `${CITY_SUMMARY_EXPORT_NAME}-${dateStamp}.xlsx`);
+  };
 
   return (
     <div className="tab-content">
@@ -82,29 +190,57 @@ function GeoTab({ cities: rawCities }) {
         </Panel>
       </div>
 
-      <SectionHeader title="City table" sub="Complete city-level efficiency register." />
+      <SectionHeader
+        title="City table"
+        sub="Complete city-level efficiency register."
+        action={
+          <div className="table-actions">
+            <button
+              type="button"
+              className={`ghost-button table-action-copy${isCopyConfirmed ? " is-copied" : ""}`}
+              onClick={handleCopySummary}
+              disabled={!sortedSummaryRows.length}
+            >
+              Copy table
+              <span className="table-action-copy__tick" aria-hidden="true">✓</span>
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={handleExportSummary}
+              disabled={!sortedSummaryRows.length}
+            >
+              Export XLSX
+            </button>
+          </div>
+        }
+      />
       <Panel className="table-panel">
         <table className="data-table">
           <thead>
             <tr>
-              <Th>#</Th>
-              <Th>City</Th>
-              <Th right>Spend</Th>
-              <Th right>GMV</Th>
-              <Th right>ROAS</Th>
-              <Th right>Impr.</Th>
-              <Th right>Clicks</Th>
-              <Th right>ATC</Th>
-              <Th right>Conv.</Th>
-              <Th right>CPO</Th>
-              <Th right>AOV</Th>
+              {CITY_SUMMARY_COLUMNS.map((column) => (
+                <Th key={column.key} right={column.right}>
+                  <button
+                    type="button"
+                    className={`table-sort-button${summarySortKey === column.key ? " is-active" : ""}`}
+                    onClick={() => handleSummarySort(column)}
+                  >
+                    {column.label}
+                    {summarySortKey === column.key
+                      ? summarySortDirection === "asc"
+                        ? " ↑"
+                        : " ↓"
+                      : ""}
+                  </button>
+                </Th>
+              ))}
               <Th>Health</Th>
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((city, index) => (
+            {visibleRows.map((city) => (
               <tr key={city.key}>
-                <Td>{index + 1}</Td>
                 <Td>{city.key}</Td>
                 <Td right>{fmt.inr(city.spend)}</Td>
                 <Td right>{fmt.inr(city.gmv)}</Td>
@@ -125,7 +261,7 @@ function GeoTab({ cities: rawCities }) {
           </tbody>
         </table>
         <TableFooter
-          total={cities.length}
+          total={sortedSummaryRows.length}
           shown={visibleRows.length}
           expanded={expanded}
           label="cities"

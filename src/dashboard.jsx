@@ -286,15 +286,10 @@ export default function Dashboard({ data, onReset }) {
         <header ref={topbarRef} className="dashboard-topbar">
           <div className="dashboard-topbar__main">
             <div className="dashboard-brand">
-              <div className="dashboard-brand__mark">IM</div>
+              <div className="dashboard-brand__mark">IS</div>
               <div>
-                <p className="eyebrow">Instamart ads intelligence</p>
-                <h1 className="dashboard-title">Campaign view</h1>
-                <p className="dashboard-subtitle">
-                  {formatRangeDate(allDates[0])} to {formatRangeDate(allDates[allDates.length - 1])}
-                  {" · "}
-                  {fmt.num(data.length)} rows available
-                </p>
+                <p className="eyebrow">InstaSmarty analytics workspace</p>
+                <h1 className="dashboard-title">InstaSmarty</h1>
               </div>
             </div>
 
@@ -482,6 +477,14 @@ export default function Dashboard({ data, onReset }) {
       {tab === "cities" && (
         <GeoTab cities={groupedData.cities} />
       )}
+
+      <footer className="dashboard-credit" aria-label="Dashboard credits">
+        <div className="dashboard-credit__details">
+          <span className="dashboard-credit__pill">Owner: Varun</span>
+          <span className="dashboard-credit__pill">Website: InstaSmarty</span>
+        </div>
+        <p className="dashboard-credit__message">Made with ❤️ by Varun &amp; Sarthak</p>
+      </footer>
     </div>
   );
 }

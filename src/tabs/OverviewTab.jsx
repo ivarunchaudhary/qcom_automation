@@ -30,28 +30,29 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
+const stripRupeeSymbol = (value) => value.replace("₹", "");
+const formatAbsoluteCurrency = (value) => stripRupeeSymbol(fmt.inrFull(value));
+const formatAbsoluteCurrency2 = (value) => stripRupeeSymbol(fmt.inr2(value));
+
 const DAILY_SUMMARY_COLUMNS = [
-  { key: "date", label: "Date" },
-  { key: "spend", label: "Spend" },
-  { key: "gmv", label: "GMV" },
-  { key: "roas", label: "ROAS" },
-  { key: "imp", label: "Impressions" },
-  { key: "clks", label: "Clicks" },
-  { key: "ctr", label: "CTR" },
-  { key: "a2c", label: "ATC" },
-  { key: "atcr", label: "ATCR" },
-  { key: "conv", label: "Conv." },
-  { key: "cvr", label: "CVR" },
-  { key: "cpo", label: "CPO" },
-  { key: "aov", label: "AOV" },
-  { key: "cpc", label: "CPC" },
+  { key: "rawDate", label: "Date", type: "date", format: (row) => row.date },
+  { key: "spend", label: "Spend", type: "number", format: (row) => formatAbsoluteCurrency(row.spend) },
+  { key: "gmv", label: "GMV", type: "number", format: (row) => formatAbsoluteCurrency(row.gmv) },
+  { key: "roas", label: "ROAS", type: "number", format: (row) => fmt.dec2(row.roas) },
+  { key: "imp", label: "Impressions", type: "number", format: (row) => fmt.num(row.imp) },
+  { key: "clks", label: "Clicks", type: "number", format: (row) => fmt.num(row.clks) },
+  { key: "ctr", label: "CTR", type: "number", format: (row) => fmt.pct(row.ctr) },
+  { key: "a2c", label: "ATC", type: "number", format: (row) => fmt.num(row.a2c) },
+  { key: "atcr", label: "ATCR", type: "number", format: (row) => fmt.pct(row.atcr) },
+  { key: "conv", label: "Conv.", type: "number", format: (row) => fmt.num(row.conv) },
+  { key: "cvr", label: "CVR", type: "number", format: (row) => fmt.pct(row.cvr) },
+  { key: "cpo", label: "CPO", type: "number", format: (row) => formatAbsoluteCurrency(row.cpo) },
+  { key: "aov", label: "AOV", type: "number", format: (row) => formatAbsoluteCurrency(row.aov) },
+  { key: "cpc", label: "CPC", type: "number", format: (row) => formatAbsoluteCurrency2(row.cpc) },
 ];
 
 const DAILY_SUMMARY_EXPORT_NAME = "daily-summary";
 const COPY_FEEDBACK_MS = 1200;
-const stripRupeeSymbol = (value) => value.replace("₹", "");
-const formatAbsoluteCurrency = (value) => stripRupeeSymbol(fmt.inrFull(value));
-const formatAbsoluteCurrency2 = (value) => stripRupeeSymbol(fmt.inr2(value));
 
 function copyTextWithFallback(text) {
   const textarea = document.createElement("textarea");
@@ -68,6 +69,8 @@ function copyTextWithFallback(text) {
 
 function OverviewTab({ daily }) {
   const [dailyMetric, setDailyMetric] = useState("roas");
+  const [dailySummarySortKey, setDailySummarySortKey] = useState("rawDate");
+  const [dailySummarySortDirection, setDailySummarySortDirection] = useState("asc");
   const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [, startTransition] = useTransition();
   const copyResetTimerRef = useRef(0);
@@ -86,30 +89,54 @@ function OverviewTab({ daily }) {
       daily.map((item) => ({
         rawDate: item.rawDate,
         date: formatDateDDMMYYYY(item.rawDate),
-        spend: formatAbsoluteCurrency(item.spend),
-        gmv: formatAbsoluteCurrency(item.gmv),
-        roas: fmt.dec2(item.roas),
-        roasColor: roasTone(item.roas).color,
-        imp: fmt.num(item.imp),
-        clks: fmt.num(item.clks),
-        ctr: fmt.pct(item.ctr),
-        a2c: fmt.num(item.a2c),
-        atcr: fmt.pct(item.atcr),
-        conv: fmt.num(item.conv),
-        cvr: fmt.pct(item.cvr),
-        cpo: formatAbsoluteCurrency(item.cpo),
-        aov: formatAbsoluteCurrency(item.aov),
-        cpc: formatAbsoluteCurrency2(item.cpc),
+        spend: item.spend,
+        gmv: item.gmv,
+        roas: item.roas,
+        imp: item.imp,
+        clks: item.clks,
+        ctr: item.ctr,
+        a2c: item.a2c,
+        atcr: item.atcr,
+        conv: item.conv,
+        cvr: item.cvr,
+        cpo: item.cpo,
+        aov: item.aov,
+        cpc: item.cpc,
       })),
     [daily],
   );
+
+  const sortedDailySummaryRows = useMemo(() => {
+    const rows = [...dailySummaryRows];
+    const sortColumn = DAILY_SUMMARY_COLUMNS.find((column) => column.key === dailySummarySortKey) || DAILY_SUMMARY_COLUMNS[0];
+    const directionFactor = dailySummarySortDirection === "asc" ? 1 : -1;
+
+    rows.sort((left, right) => {
+      if (sortColumn.type === "date" || sortColumn.type === "string") {
+        return directionFactor * left[sortColumn.key].localeCompare(right[sortColumn.key]);
+      }
+      return directionFactor * ((left[sortColumn.key] || 0) - (right[sortColumn.key] || 0));
+    });
+
+    return rows;
+  }, [dailySummaryRows, dailySummarySortDirection, dailySummarySortKey]);
+
+  const handleDailySummarySort = (column) => {
+    if (dailySummarySortKey === column.key) {
+      setDailySummarySortDirection((currentDirection) => (currentDirection === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setDailySummarySortKey(column.key);
+    setDailySummarySortDirection(column.type === "number" ? "desc" : "asc");
+  };
 
   const handleCopyDailySummary = async () => {
     const headers = DAILY_SUMMARY_COLUMNS.map((column) => column.label);
     const payload = [
       headers.join("\t"),
-      ...dailySummaryRows.map((row) =>
-        DAILY_SUMMARY_COLUMNS.map((column) => row[column.key]).join("\t"),
+      ...sortedDailySummaryRows.map((row) =>
+        DAILY_SUMMARY_COLUMNS.map((column) => column.format(row)).join("\t"),
       ),
     ].join("\n");
     let copied = false;
@@ -138,9 +165,9 @@ function OverviewTab({ daily }) {
 
   const handleExportDailySummary = async () => {
     const headers = DAILY_SUMMARY_COLUMNS.map((column) => column.label);
-    const rowsForExport = dailySummaryRows.map((row) =>
+    const rowsForExport = sortedDailySummaryRows.map((row) =>
       DAILY_SUMMARY_COLUMNS.reduce((acc, column) => {
-        acc[column.label] = row[column.key];
+        acc[column.label] = column.format(row);
         return acc;
       }, {}),
     );
@@ -243,7 +270,7 @@ function OverviewTab({ daily }) {
               type="button"
               className={`ghost-button table-action-copy${isCopyConfirmed ? " is-copied" : ""}`}
               onClick={handleCopyDailySummary}
-              disabled={!dailySummaryRows.length}
+              disabled={!sortedDailySummaryRows.length}
             >
               Copy table
               <span className="table-action-copy__tick" aria-hidden="true">✓</span>
@@ -252,7 +279,7 @@ function OverviewTab({ daily }) {
               type="button"
               className="ghost-button"
               onClick={handleExportDailySummary}
-              disabled={!dailySummaryRows.length}
+              disabled={!sortedDailySummaryRows.length}
             >
               Export XLSX
             </button>
@@ -264,31 +291,40 @@ function OverviewTab({ daily }) {
           <thead>
             <tr>
               {DAILY_SUMMARY_COLUMNS.map((column) => (
-                <Th key={column.key} right={column.key !== "date"}>
-                  {column.label}
+                <Th key={column.key} right={column.key !== "rawDate"}>
+                  <button
+                    type="button"
+                    className={`table-sort-button${dailySummarySortKey === column.key ? " is-active" : ""}`}
+                    onClick={() => handleDailySummarySort(column)}
+                  >
+                    {column.label}
+                    {dailySummarySortKey === column.key
+                      ? dailySummarySortDirection === "asc"
+                        ? " ↑"
+                        : " ↓"
+                      : ""}
+                  </button>
                 </Th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {dailySummaryRows.map((row) => (
+            {sortedDailySummaryRows.map((row) => (
               <tr key={row.rawDate}>
                 <Td>{row.date}</Td>
-                <Td right>{row.spend}</Td>
-                <Td right>{row.gmv}</Td>
-                <Td right accent color={row.roasColor}>
-                  {row.roas}
-                </Td>
-                <Td right>{row.imp}</Td>
-                <Td right>{row.clks}</Td>
-                <Td right>{row.ctr}</Td>
-                <Td right>{row.a2c}</Td>
-                <Td right>{row.atcr}</Td>
-                <Td right>{row.conv}</Td>
-                <Td right>{row.cvr}</Td>
-                <Td right>{row.cpo}</Td>
-                <Td right>{row.aov}</Td>
-                <Td right>{row.cpc}</Td>
+                <Td right>{formatAbsoluteCurrency(row.spend)}</Td>
+                <Td right>{formatAbsoluteCurrency(row.gmv)}</Td>
+                <Td right accent color={roasTone(row.roas).color}>{fmt.dec2(row.roas)}</Td>
+                <Td right>{fmt.num(row.imp)}</Td>
+                <Td right>{fmt.num(row.clks)}</Td>
+                <Td right>{fmt.pct(row.ctr)}</Td>
+                <Td right>{fmt.num(row.a2c)}</Td>
+                <Td right>{fmt.pct(row.atcr)}</Td>
+                <Td right>{fmt.num(row.conv)}</Td>
+                <Td right>{fmt.pct(row.cvr)}</Td>
+                <Td right>{formatAbsoluteCurrency(row.cpo)}</Td>
+                <Td right>{formatAbsoluteCurrency(row.aov)}</Td>
+                <Td right>{formatAbsoluteCurrency2(row.cpc)}</Td>
               </tr>
             ))}
           </tbody>
