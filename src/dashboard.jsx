@@ -479,10 +479,6 @@ export default function Dashboard({ data, onReset }) {
       )}
 
       <footer className="dashboard-credit" aria-label="Dashboard credits">
-        <div className="dashboard-credit__details">
-          <span className="dashboard-credit__pill">Owner: Varun</span>
-          <span className="dashboard-credit__pill">Website: InstaSmarty</span>
-        </div>
         <p className="dashboard-credit__message">Made with ❤️ by Varun &amp; Sarthak</p>
       </footer>
     </div>
