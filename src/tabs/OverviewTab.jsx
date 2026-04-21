@@ -1,4 +1,4 @@
-import { memo, useState, useTransition } from "react";
+import { memo, useMemo, useRef, useState, useTransition } from "react";
 import {
   Bar,
   BarChart,
@@ -12,15 +12,12 @@ import {
   YAxis,
 } from "recharts";
 import {
-  BRAND_COLORS,
   CHART_GRID,
   DAILY_METRICS,
-  ROAS_TARGET,
   axisTick,
   chartLegendStyle,
-  cleanCampaignName,
   fmt,
-  formatRangeDate,
+  formatDateDDMMYYYY,
   pct,
   roasTone,
 } from "../lib/metrics.js";
@@ -33,9 +30,47 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
-function OverviewTab({ daily, bleedingCampaigns, starKeywords }) {
+const DAILY_SUMMARY_COLUMNS = [
+  { key: "date", label: "Date" },
+  { key: "spend", label: "Spend" },
+  { key: "gmv", label: "GMV" },
+  { key: "roas", label: "ROAS" },
+  { key: "imp", label: "Impressions" },
+  { key: "clks", label: "Clicks" },
+  { key: "ctr", label: "CTR" },
+  { key: "a2c", label: "ATC" },
+  { key: "atcr", label: "ATCR" },
+  { key: "conv", label: "Conv." },
+  { key: "cvr", label: "CVR" },
+  { key: "cpo", label: "CPO" },
+  { key: "aov", label: "AOV" },
+  { key: "cpc", label: "CPC" },
+];
+
+const DAILY_SUMMARY_EXPORT_NAME = "daily-summary";
+const COPY_FEEDBACK_MS = 1200;
+const stripRupeeSymbol = (value) => value.replace("₹", "");
+const formatAbsoluteCurrency = (value) => stripRupeeSymbol(fmt.inrFull(value));
+const formatAbsoluteCurrency2 = (value) => stripRupeeSymbol(fmt.inr2(value));
+
+function copyTextWithFallback(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
+}
+
+function OverviewTab({ daily }) {
   const [dailyMetric, setDailyMetric] = useState("roas");
+  const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [, startTransition] = useTransition();
+  const copyResetTimerRef = useRef(0);
 
   const selectedMetric =
     DAILY_METRICS.find((metric) => metric.key === dailyMetric) || DAILY_METRICS[0];
@@ -46,6 +81,77 @@ function OverviewTab({ daily, bleedingCampaigns, starKeywords }) {
           Math.abs(daily[daily.length - 2][dailyMetric]),
         )
       : 0;
+  const dailySummaryRows = useMemo(
+    () =>
+      daily.map((item) => ({
+        rawDate: item.rawDate,
+        date: formatDateDDMMYYYY(item.rawDate),
+        spend: formatAbsoluteCurrency(item.spend),
+        gmv: formatAbsoluteCurrency(item.gmv),
+        roas: fmt.dec2(item.roas),
+        roasColor: roasTone(item.roas).color,
+        imp: fmt.num(item.imp),
+        clks: fmt.num(item.clks),
+        ctr: fmt.pct(item.ctr),
+        a2c: fmt.num(item.a2c),
+        atcr: fmt.pct(item.atcr),
+        conv: fmt.num(item.conv),
+        cvr: fmt.pct(item.cvr),
+        cpo: formatAbsoluteCurrency(item.cpo),
+        aov: formatAbsoluteCurrency(item.aov),
+        cpc: formatAbsoluteCurrency2(item.cpc),
+      })),
+    [daily],
+  );
+
+  const handleCopyDailySummary = async () => {
+    const headers = DAILY_SUMMARY_COLUMNS.map((column) => column.label);
+    const payload = [
+      headers.join("\t"),
+      ...dailySummaryRows.map((row) =>
+        DAILY_SUMMARY_COLUMNS.map((column) => row[column.key]).join("\t"),
+      ),
+    ].join("\n");
+    let copied = false;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+        copied = true;
+      }
+    } catch {
+      // fall back to legacy copy path below
+    }
+
+    if (!copied) {
+      copied = copyTextWithFallback(payload);
+    }
+
+    if (copied) {
+      setIsCopyConfirmed(true);
+      window.clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setIsCopyConfirmed(false);
+      }, COPY_FEEDBACK_MS);
+    }
+  };
+
+  const handleExportDailySummary = async () => {
+    const headers = DAILY_SUMMARY_COLUMNS.map((column) => column.label);
+    const rowsForExport = dailySummaryRows.map((row) =>
+      DAILY_SUMMARY_COLUMNS.reduce((acc, column) => {
+        acc[column.label] = row[column.key];
+        return acc;
+      }, {}),
+    );
+
+    const xlsx = await import("xlsx");
+    const worksheet = xlsx.utils.json_to_sheet(rowsForExport, { header: headers });
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Daily Summary");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    xlsx.writeFile(workbook, `${DAILY_SUMMARY_EXPORT_NAME}-${dateStamp}.xlsx`);
+  };
 
   return (
     <div className="tab-content">
@@ -128,112 +234,67 @@ function OverviewTab({ daily, bleedingCampaigns, starKeywords }) {
         </Panel>
       </div>
 
-      <SectionHeader title="Daily summary table" sub="All core metrics per reporting day." />
+      <SectionHeader
+        title="Daily summary table"
+        sub="All core metrics per reporting day."
+        action={
+          <div className="table-actions">
+            <button
+              type="button"
+              className={`ghost-button table-action-copy${isCopyConfirmed ? " is-copied" : ""}`}
+              onClick={handleCopyDailySummary}
+              disabled={!dailySummaryRows.length}
+            >
+              Copy table
+              <span className="table-action-copy__tick" aria-hidden="true">✓</span>
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={handleExportDailySummary}
+              disabled={!dailySummaryRows.length}
+            >
+              Export XLSX
+            </button>
+          </div>
+        }
+      />
       <Panel className="table-panel">
         <table className="data-table">
           <thead>
             <tr>
-              {[
-                "Date",
-                "Spend",
-                "GMV",
-                "ROAS",
-                "Impressions",
-                "Clicks",
-                "CTR",
-                "ATC",
-                "ATCR",
-                "Conv.",
-                "CVR",
-                "CPO",
-                "AOV",
-                "CPC",
-              ].map((header) => (
-                <Th key={header} right={header !== "Date"}>
-                  {header}
+              {DAILY_SUMMARY_COLUMNS.map((column) => (
+                <Th key={column.key} right={column.key !== "date"}>
+                  {column.label}
                 </Th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {daily.map((item) => (
-              <tr key={item.rawDate}>
-                <Td>{formatRangeDate(item.rawDate)}</Td>
-                <Td right>{fmt.inr(item.spend)}</Td>
-                <Td right>{fmt.inr(item.gmv)}</Td>
-                <Td right accent color={roasTone(item.roas).color}>
-                  {fmt.x(item.roas)}
+            {dailySummaryRows.map((row) => (
+              <tr key={row.rawDate}>
+                <Td>{row.date}</Td>
+                <Td right>{row.spend}</Td>
+                <Td right>{row.gmv}</Td>
+                <Td right accent color={row.roasColor}>
+                  {row.roas}
                 </Td>
-                <Td right>{fmt.num(item.imp)}</Td>
-                <Td right>{fmt.num(item.clks)}</Td>
-                <Td right>{fmt.pct(item.ctr)}</Td>
-                <Td right>{fmt.num(item.a2c)}</Td>
-                <Td right>{fmt.pct(item.atcr)}</Td>
-                <Td right>{fmt.num(item.conv)}</Td>
-                <Td right>{fmt.pct(item.cvr)}</Td>
-                <Td right>{fmt.inr(item.cpo)}</Td>
-                <Td right>{fmt.inr(item.aov)}</Td>
-                <Td right>{fmt.inr2(item.cpc)}</Td>
+                <Td right>{row.imp}</Td>
+                <Td right>{row.clks}</Td>
+                <Td right>{row.ctr}</Td>
+                <Td right>{row.a2c}</Td>
+                <Td right>{row.atcr}</Td>
+                <Td right>{row.conv}</Td>
+                <Td right>{row.cvr}</Td>
+                <Td right>{row.cpo}</Td>
+                <Td right>{row.aov}</Td>
+                <Td right>{row.cpc}</Td>
               </tr>
             ))}
           </tbody>
         </table>
       </Panel>
 
-      <SectionHeader title="Action prompts" sub="Immediate optimization cues for the selected range." />
-      <div className="panel-grid panel-grid--two">
-        <Panel className="insight-panel danger">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Budget at risk</p>
-              <h3 className="panel-title">Bleeding campaigns</h3>
-            </div>
-            <Badge label={String(bleedingCampaigns.length)} color="#c63d2f" />
-          </div>
-
-          <div className="stack-list">
-            {bleedingCampaigns.slice(0, 5).map((campaign) => (
-              <div key={campaign.key} className="stack-list__item">
-                <div>
-                  <p className="stack-list__title">{cleanCampaignName(campaign.key)}</p>
-                  <Badge label={campaign.brand} color={BRAND_COLORS[campaign.brand]} />
-                </div>
-                <div className="stack-list__meta">
-                  <strong style={{ color: "#c63d2f" }}>{fmt.x(campaign.roas)}</strong>
-                  <span>{fmt.inr(campaign.spend)} spend</span>
-                </div>
-              </div>
-            ))}
-            {!bleedingCampaigns.length ? <p className="empty-copy">No bleeding campaigns in the selected range.</p> : null}
-          </div>
-        </Panel>
-
-        <Panel className="insight-panel success">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Scale candidates</p>
-              <h3 className="panel-title">Winning keywords</h3>
-            </div>
-            <Badge label={String(starKeywords.length)} color="#14976e" />
-          </div>
-
-          <div className="stack-list">
-            {starKeywords.slice(0, 5).map((keyword) => (
-              <div key={keyword.key} className="stack-list__item">
-                <div>
-                  <p className="stack-list__title">{keyword.key}</p>
-                  <Badge label={keyword.brand} color={BRAND_COLORS[keyword.brand]} />
-                </div>
-                <div className="stack-list__meta">
-                  <strong style={{ color: "#14976e" }}>{fmt.x(keyword.roas)}</strong>
-                  <span>{fmt.num(keyword.conv)} conversions</span>
-                </div>
-              </div>
-            ))}
-            {!starKeywords.length ? <p className="empty-copy">No star keywords crossed the scale threshold yet.</p> : null}
-          </div>
-        </Panel>
-      </div>
     </div>
   );
 }

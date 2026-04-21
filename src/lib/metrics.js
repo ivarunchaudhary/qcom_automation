@@ -58,6 +58,7 @@ export const fmt = {
     `₹${Number(v).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
   inr2: (v) => `₹${Number(v).toFixed(2)}`,
   x: (v) => `${Number(v).toFixed(2)}x`,
+  dec2: (v) => Number(v).toFixed(2),
   pct: (v) => `${Number(v).toFixed(2)}%`,
   num: (v) => Number(v).toLocaleString("en-IN"),
 };
@@ -90,6 +91,16 @@ export function formatShortDate(dateString) {
   return new Intl.DateTimeFormat("en-IN", {
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
+  }).format(parseIsoDate(dateString));
+}
+
+export function formatDateDDMMYYYY(dateString) {
+  if (!dateString) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     timeZone: "UTC",
   }).format(parseIsoDate(dateString));
 }

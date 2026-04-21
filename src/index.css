@@ -841,6 +841,51 @@ h3 {
   justify-content: flex-end;
 }
 
+.table-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-action-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-action-copy__tick {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(1px) scale(0.72);
+  transition:
+    opacity var(--motion-quick) ease,
+    transform var(--motion-quick) var(--ease-out-soft);
+}
+
+.table-action-copy.is-copied {
+  border-color: rgba(20, 151, 110, 0.34);
+  color: var(--success);
+  background: rgba(20, 151, 110, 0.12);
+}
+
+.table-action-copy.is-copied .table-action-copy__tick {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: copyTickPop 220ms var(--ease-out-soft);
+}
+
+@keyframes copyTickPop {
+  0% {
+    transform: translateY(2px) scale(0.7);
+  }
+  70% {
+    transform: translateY(-1px) scale(1.08);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
 .panel {
   padding: 22px;
 }
