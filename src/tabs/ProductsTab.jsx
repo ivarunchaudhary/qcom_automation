@@ -3,7 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -49,6 +49,20 @@ const PRODUCT_SUMMARY_COLUMNS = [
 
 const PRODUCT_SUMMARY_EXPORT_NAME = "product-summary";
 const COPY_FEEDBACK_MS = 1200;
+const PRODUCT_CHART_LIMIT = 10;
+
+function truncateProductLabel(value, maxLength = 28) {
+  if (!value) return "";
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+}
+
+function formatProductMetric(metric, value) {
+  if (metric === "roas") return `${Number(value).toFixed(2)}x`;
+  if (metric === "aov" || metric === "spend" || metric === "gmv" || metric === "cpo") {
+    return fmt.inrFull(value);
+  }
+  return fmt.num(value);
+}
 
 function copyTextWithFallback(text) {
   const textarea = document.createElement("textarea");
@@ -75,6 +89,17 @@ function ProductsTab({ products: rawProducts }) {
   const products = useMemo(
     () => orderByMetric(rawProducts, productSort),
     [rawProducts, productSort],
+  );
+  const topProductChartData = useMemo(
+    () =>
+      products.slice(0, PRODUCT_CHART_LIMIT).map((product, index) => ({
+        ...product,
+        rank: index + 1,
+        metricValue: product[productSort] || 0,
+        metricLabel: formatProductMetric(productSort, product[productSort] || 0),
+        displayName: truncateProductLabel(cleanProductName(product.key) || product.key),
+      })),
+    [productSort, products],
   );
   const sortedSummaryRows = useMemo(() => {
     const rows = [...rawProducts];
@@ -186,13 +211,11 @@ function ProductsTab({ products: rawProducts }) {
             <h3 className="panel-title">Ranked by {productSort.toUpperCase()}</h3>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={Math.max(320, topProductChartData.length * 42)}>
           <BarChart
-            data={products.slice(0, 12).map((product) => ({
-              ...product,
-              shortName: cleanProductName(product.key),
-            }))}
+            data={topProductChartData}
             layout="vertical"
+            margin={{ top: 6, right: 36, bottom: 6, left: 12 }}
           >
             <CartesianGrid stroke={CHART_GRID} strokeDasharray="4 4" horizontal={false} />
             <XAxis
@@ -201,30 +224,22 @@ function ProductsTab({ products: rawProducts }) {
               stroke={CHART_GRID}
               tickFormatter={(value) => {
                 if (productSort === "roas") return `${Number(value).toFixed(1)}x`;
-                if (productSort === "aov" || productSort === "spend" || productSort === "gmv") {
+                if (productSort === "aov" || productSort === "spend" || productSort === "gmv" || productSort === "cpo") {
                   return fmt.inr(value);
                 }
                 return fmt.num(value);
               }}
             />
-            <YAxis type="category" dataKey="shortName" tick={axisTick} stroke={CHART_GRID} width={170} />
+            <YAxis type="category" dataKey="displayName" tick={axisTick} stroke={CHART_GRID} width={190} />
             <Tooltip
               content={
                 <TooltipCard
-                  valFmt={(_, value) => {
-                    if (productSort === "roas") return `${Number(value).toFixed(2)}x`;
-                    if (productSort === "aov" || productSort === "spend" || productSort === "gmv") {
-                      return fmt.inrFull(value);
-                    }
-                    return fmt.num(value);
-                  }}
+                  valFmt={(_, value) => formatProductMetric(productSort, value)}
                 />
               }
             />
-            <Bar dataKey={productSort} name={productSort.toUpperCase()} radius={[0, 12, 12, 0]} isAnimationActive={false}>
-              {products.slice(0, 12).map((product) => (
-                <Cell key={product.key} fill={BRAND_COLORS[product.brand] || "#9a8e83"} />
-              ))}
+            <Bar dataKey="metricValue" name={productSort.toUpperCase()} fill="#2f3744" radius={[0, 12, 12, 0]} barSize={18} isAnimationActive={false}>
+              <LabelList dataKey="metricLabel" position="right" fill="#4e5766" fontSize={11} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

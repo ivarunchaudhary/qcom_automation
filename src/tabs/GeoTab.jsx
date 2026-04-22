@@ -27,6 +27,13 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
+const GEO_EFFICIENCY_METRICS = [
+  { key: "roas", label: "ROAS", format: (value) => `${Number(value).toFixed(2)}x` },
+  { key: "ctr", label: "CTR", format: fmt.pct },
+  { key: "atcr", label: "ATCR", format: fmt.pct },
+  { key: "cvr", label: "CVR", format: fmt.pct },
+];
+
 const CITY_SUMMARY_COLUMNS = [
   { key: "key", label: "City", type: "string", right: false, format: (row) => row.key },
   { key: "spend", label: "Spend", type: "number", right: true, format: (row) => fmt.inr(row.spend) },
@@ -57,17 +64,25 @@ function copyTextWithFallback(text) {
 }
 
 function GeoTab({ cities: rawCities }) {
+  const [efficiencyMetricKey, setEfficiencyMetricKey] = useState("roas");
   const [summarySortKey, setSummarySortKey] = useState("spend");
   const [summarySortDirection, setSummarySortDirection] = useState("desc");
   const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
   const copyResetTimerRef = useRef(0);
+  const selectedEfficiencyMetric =
+    GEO_EFFICIENCY_METRICS.find((metric) => metric.key === efficiencyMetricKey) || GEO_EFFICIENCY_METRICS[0];
 
   const cities = useMemo(() => orderByMetric(rawCities, "spend"), [rawCities]);
-  const citiesByRoas = useMemo(() => [...cities].sort((a, b) => b.roas - a.roas), [cities]);
   const citySpendLeaders = useMemo(() => cities.slice(0, 12), [cities]);
-  const cityRoasLeaders = useMemo(() => citiesByRoas.slice(0, 12), [citiesByRoas]);
+  const cityEfficiencyLeaders = useMemo(
+    () =>
+      [...rawCities]
+        .sort((left, right) => (right[selectedEfficiencyMetric.key] || 0) - (left[selectedEfficiencyMetric.key] || 0))
+        .slice(0, 12),
+    [rawCities, selectedEfficiencyMetric.key],
+  );
   const sortedSummaryRows = useMemo(() => {
     const rows = [...rawCities];
     const sortColumn = CITY_SUMMARY_COLUMNS.find((column) => column.key === summarySortKey) || CITY_SUMMARY_COLUMNS[0];
@@ -162,7 +177,7 @@ function GeoTab({ cities: rawCities }) {
               <XAxis type="number" tick={axisTick} stroke={CHART_GRID} tickFormatter={fmt.inr} />
               <YAxis type="category" dataKey="key" tick={axisTick} stroke={CHART_GRID} width={92} />
               <Tooltip content={<TooltipCard valFmt={(_, value) => fmt.inrFull(value)} />} />
-              <Bar dataKey="spend" name="Spend" fill="#e66a2c" radius={[0, 12, 12, 0]} isAnimationActive={false} />
+              <Bar dataKey="spend" name="Spend" fill="#b47a33" radius={[0, 12, 12, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -171,17 +186,33 @@ function GeoTab({ cities: rawCities }) {
           <div className="panel-header">
             <div>
               <p className="panel-label">Efficiency</p>
-              <h3 className="panel-title">Top cities by ROAS</h3>
+              <h3 className="panel-title">Top cities by {selectedEfficiencyMetric.label}</h3>
+            </div>
+            <div className="toolbar-pills">
+              {GEO_EFFICIENCY_METRICS.map((metric) => (
+                <button
+                  key={metric.key}
+                  type="button"
+                  className={`pill-button compact${efficiencyMetricKey === metric.key ? " is-active" : ""}`}
+                  onClick={() => {
+                    startTransition(() => {
+                      setEfficiencyMetricKey(metric.key);
+                    });
+                  }}
+                >
+                  {metric.label}
+                </button>
+              ))}
             </div>
           </div>
           <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={cityRoasLeaders} layout="vertical">
+            <BarChart data={cityEfficiencyLeaders} layout="vertical">
               <CartesianGrid stroke={CHART_GRID} strokeDasharray="4 4" horizontal={false} />
-              <XAxis type="number" tick={axisTick} stroke={CHART_GRID} tickFormatter={(value) => `${value.toFixed(1)}x`} />
+              <XAxis type="number" tick={axisTick} stroke={CHART_GRID} tickFormatter={selectedEfficiencyMetric.format} />
               <YAxis type="category" dataKey="key" tick={axisTick} stroke={CHART_GRID} width={92} />
-              <Tooltip content={<TooltipCard valFmt={(_, value) => `${Number(value).toFixed(2)}x`} />} />
-              <Bar dataKey="roas" name="ROAS" radius={[0, 12, 12, 0]} isAnimationActive={false}>
-                {cityRoasLeaders.map((city) => (
+              <Tooltip content={<TooltipCard valFmt={(_, value) => selectedEfficiencyMetric.format(value)} />} />
+              <Bar dataKey={selectedEfficiencyMetric.key} name={selectedEfficiencyMetric.label} radius={[0, 12, 12, 0]} isAnimationActive={false}>
+                {cityEfficiencyLeaders.map((city) => (
                   <Cell key={city.key} fill={roasTone(city.roas).color} />
                 ))}
               </Bar>

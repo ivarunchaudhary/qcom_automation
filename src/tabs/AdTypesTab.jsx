@@ -31,6 +31,13 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
+const ADTYPE_EFFICIENCY_METRICS = [
+  { key: "roas", label: "ROAS", format: (value) => `${Number(value).toFixed(2)}x` },
+  { key: "ctr", label: "CTR", format: fmt.pct },
+  { key: "atcr", label: "ATCR", format: fmt.pct },
+  { key: "cvr", label: "CVR", format: fmt.pct },
+];
+
 const ADTYPE_SUMMARY_COLUMNS = [
   { key: "name", label: "Ad type", type: "string", format: (row) => row.name },
   { key: "spend", label: "Spend", type: "number", format: (row) => formatAbsoluteCurrency(row.spend) },
@@ -68,15 +75,28 @@ function copyTextWithFallback(text) {
 }
 
 function AdTypesTab({ adtypes }) {
+  const [efficiencyMetricKey, setEfficiencyMetricKey] = useState("roas");
   const [summarySortKey, setSummarySortKey] = useState("spend");
   const [summarySortDirection, setSummarySortDirection] = useState("desc");
   const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [, startTransition] = useTransition();
   const copyResetTimerRef = useRef(0);
+  const selectedEfficiencyMetric =
+    ADTYPE_EFFICIENCY_METRICS.find((metric) => metric.key === efficiencyMetricKey) || ADTYPE_EFFICIENCY_METRICS[0];
 
   const adtypeChartData = useMemo(
     () => adtypes.map((item) => ({ ...item, name: cleanAdTypeLabel(item.key) })),
     [adtypes],
+  );
+  const efficiencyChartData = useMemo(
+    () =>
+      [...adtypeChartData]
+        .map((item) => ({
+          ...item,
+          metricValue: item[selectedEfficiencyMetric.key] || 0,
+        }))
+        .sort((left, right) => right.metricValue - left.metricValue),
+    [adtypeChartData, selectedEfficiencyMetric.key],
   );
   const sortedSummaryRows = useMemo(() => {
     const rows = [...adtypeChartData];
@@ -213,8 +233,8 @@ function AdTypesTab({ adtypes }) {
               <YAxis tick={axisTick} stroke={CHART_GRID} tickFormatter={fmt.inr} />
               <Tooltip content={<TooltipCard valFmt={(_, value) => fmt.inrFull(value)} />} />
               <Legend wrapperStyle={chartLegendStyle} />
-              <Bar dataKey="spend" name="Spend" fill="#e66a2c" radius={[12, 12, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="gmv" name="GMV" fill="#14976e" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="spend" name="Spend" fill="#b47a33" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="gmv" name="GMV" fill="#66758a" radius={[12, 12, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -223,20 +243,42 @@ function AdTypesTab({ adtypes }) {
           <div className="panel-header">
             <div>
               <p className="panel-label">Efficiency</p>
-              <h3 className="panel-title">ROAS by format</h3>
+              <h3 className="panel-title">{selectedEfficiencyMetric.label} by format</h3>
+            </div>
+            <div className="toolbar-pills">
+              {ADTYPE_EFFICIENCY_METRICS.map((metric) => (
+                <button
+                  key={metric.key}
+                  type="button"
+                  className={`pill-button compact${efficiencyMetricKey === metric.key ? " is-active" : ""}`}
+                  onClick={() => {
+                    startTransition(() => {
+                      setEfficiencyMetricKey(metric.key);
+                    });
+                  }}
+                >
+                  {metric.label}
+                </button>
+              ))}
             </div>
           </div>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={adtypeChartData}>
+            <BarChart data={efficiencyChartData}>
               <CartesianGrid stroke={CHART_GRID} strokeDasharray="4 4" />
               <XAxis dataKey="name" tick={axisTick} stroke={CHART_GRID} />
-              <YAxis tick={axisTick} stroke={CHART_GRID} tickFormatter={(value) => `${value}x`} />
-              <Tooltip content={<TooltipCard valFmt={(_, value) => `${Number(value).toFixed(2)}x`} />} />
-              <Bar dataKey="roas" name="ROAS" radius={[12, 12, 0, 0]} isAnimationActive={false}>
-                {adtypeChartData.map((item) => (
+              <YAxis tick={axisTick} stroke={CHART_GRID} tickFormatter={selectedEfficiencyMetric.format} />
+              <Tooltip content={<TooltipCard valFmt={(_, value) => selectedEfficiencyMetric.format(value)} />} />
+              <Bar dataKey="metricValue" name={selectedEfficiencyMetric.label} radius={[12, 12, 0, 0]} isAnimationActive={false}>
+                {efficiencyChartData.map((item) => (
                   <Cell key={item.key} fill={ADTYPE_COLORS[item.key] || "#9a8e83"} />
                 ))}
-                <LabelList dataKey="roas" position="top" formatter={(value) => `${value.toFixed(1)}x`} fill={CHART_TEXT} fontSize={11} />
+                <LabelList
+                  dataKey="metricValue"
+                  position="top"
+                  formatter={(value) => selectedEfficiencyMetric.format(value)}
+                  fill={CHART_TEXT}
+                  fontSize={11}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

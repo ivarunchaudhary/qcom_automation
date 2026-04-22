@@ -31,6 +31,19 @@ import {
   TooltipCard,
 } from "../lib/ui.jsx";
 
+const TOP_KEYWORD_METRICS = [
+  { key: "spend", label: "Spend", format: fmt.inrFull, tickFormat: fmt.inr },
+  { key: "roas", label: "ROAS", format: (value) => `${Number(value).toFixed(2)}x`, tickFormat: (value) => `${Number(value).toFixed(1)}x` },
+  { key: "conv", label: "Conversions", format: fmt.num, tickFormat: fmt.num },
+  { key: "ctr", label: "CTR", format: fmt.pct, tickFormat: fmt.pct },
+  { key: "atcr", label: "ATCR", format: fmt.pct, tickFormat: fmt.pct },
+];
+
+function sortKeywordRows(rows, metric, direction = "desc") {
+  const directionFactor = direction === "asc" ? 1 : -1;
+  return [...rows].sort((left, right) => directionFactor * ((left[metric] || 0) - (right[metric] || 0)));
+}
+
 const KEYWORD_SUMMARY_COLUMNS = [
   { key: "key", label: "Keyword", type: "string", right: false, format: (row) => row.key },
   { key: "spend", label: "Spend", type: "number", right: true, format: (row) => fmt.inr(row.spend) },
@@ -65,16 +78,34 @@ function copyTextWithFallback(text) {
 
 function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) {
   const [keywordSort, setKeywordSort] = useState("spend");
+  const [topKeywordMetricKey, setTopKeywordMetricKey] = useState("spend");
   const [summarySortKey, setSummarySortKey] = useState("spend");
   const [summarySortDirection, setSummarySortDirection] = useState("desc");
   const [isCopyConfirmed, setIsCopyConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
   const copyResetTimerRef = useRef(0);
+  const selectedTopKeywordMetric =
+    TOP_KEYWORD_METRICS.find((metric) => metric.key === topKeywordMetricKey) || TOP_KEYWORD_METRICS[0];
 
-  const keywords = useMemo(
-    () => orderByMetric(rawKeywords, keywordSort),
-    [rawKeywords, keywordSort],
+  const sortedBleedingKeywords = useMemo(
+    () => sortKeywordRows(bleedingKeywords, keywordSort, keywordSort === "roas" ? "asc" : "desc"),
+    [bleedingKeywords, keywordSort],
+  );
+  const sortedStarKeywords = useMemo(
+    () => sortKeywordRows(starKeywords, keywordSort),
+    [keywordSort, starKeywords],
+  );
+  const topKeywordRows = useMemo(
+    () =>
+      orderByMetric(rawKeywords, topKeywordMetricKey)
+        .slice(0, 15)
+        .map((keyword) => ({
+          ...keyword,
+          metricValue: keyword[topKeywordMetricKey] || 0,
+          metricLabel: selectedTopKeywordMetric.format(keyword[topKeywordMetricKey] || 0),
+        })),
+    [rawKeywords, selectedTopKeywordMetric, topKeywordMetricKey],
   );
   const sortedSummaryRows = useMemo(() => {
     const rows = [...rawKeywords];
@@ -158,7 +189,7 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
     <div className="tab-content">
       <SectionHeader
         title="Keyword intelligence"
-        sub={`${keywords.length} keywords with ${bleedingKeywords.length} underperformers and ${starKeywords.length} standout terms.`}
+        sub={`${rawKeywords.length} keywords with ${bleedingKeywords.length} underperformers and ${starKeywords.length} standout terms.`}
         action={
           <div className="toolbar-pills">
             {KEYWORD_SORT_OPTIONS.map((metric) => (
@@ -184,7 +215,7 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
           <div className="panel-header">
             <div>
               <p className="panel-label">Pause candidates</p>
-              <h3 className="panel-title">Keyword bleeders</h3>
+              <h3 className="panel-title">Keyword bleeders by {keywordSort.toUpperCase()}</h3>
             </div>
             <Badge label={String(bleedingKeywords.length)} color="#c63d2f" />
           </div>
@@ -200,7 +231,7 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
                 </tr>
               </thead>
               <tbody>
-                {bleedingKeywords.map((keyword) => (
+                {sortedBleedingKeywords.map((keyword) => (
                   <tr key={keyword.key}>
                     <Td>
                       <div className="table-title">{keyword.key}</div>
@@ -230,9 +261,9 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
           <div className="panel-header">
             <div>
               <p className="panel-label">Scale candidates</p>
-              <h3 className="panel-title">Power keywords</h3>
+              <h3 className="panel-title">Power keywords by {keywordSort.toUpperCase()}</h3>
             </div>
-            <Badge label={String(starKeywords.length)} color="#14976e" />
+            <Badge label={String(starKeywords.length)} color="#2f3744" />
           </div>
           <div className="table-panel table-panel--flush">
             <table className="data-table">
@@ -246,14 +277,14 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
                 </tr>
               </thead>
               <tbody>
-                {starKeywords.slice(0, 10).map((keyword) => (
+                {sortedStarKeywords.slice(0, 10).map((keyword) => (
                   <tr key={keyword.key}>
                     <Td>
                       <div className="table-title">{keyword.key}</div>
                       <Badge label={keyword.brand} color={BRAND_COLORS[keyword.brand]} />
                     </Td>
                     <Td right>{fmt.inr(keyword.spend)}</Td>
-                    <Td right accent color="#14976e">
+                    <Td right accent color="#2f3744">
                       {fmt.x(keyword.roas)}
                     </Td>
                     <Td right>{fmt.num(keyword.conv)}</Td>
@@ -273,19 +304,40 @@ function KeywordsTab({ keywords: rawKeywords, bleedingKeywords, starKeywords }) 
         </Panel>
       </div>
 
-      <SectionHeader title="Top keywords by spend" sub="Bar color reflects ROAS health." />
+      <SectionHeader
+        title={`Top keywords by ${selectedTopKeywordMetric.label.toLowerCase()}`}
+        sub="Use a metric switch to inspect scale and efficiency leaders."
+        action={
+          <div className="toolbar-pills">
+            {TOP_KEYWORD_METRICS.map((metric) => (
+              <button
+                key={metric.key}
+                type="button"
+                className={`pill-button compact${topKeywordMetricKey === metric.key ? " is-active" : ""}`}
+                onClick={() => {
+                  startTransition(() => {
+                    setTopKeywordMetricKey(metric.key);
+                  });
+                }}
+              >
+                {metric.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
       <Panel>
-        <ResponsiveContainer width="100%" height={Math.max(240, Math.min(keywords.length, 15) * 34 + 32)}>
-          <BarChart data={keywords.slice(0, 15).map((keyword) => ({ ...keyword, roasLabel: keyword.roas.toFixed(1) }))} layout="vertical">
+        <ResponsiveContainer width="100%" height={Math.max(240, topKeywordRows.length * 34 + 32)}>
+          <BarChart data={topKeywordRows} layout="vertical">
             <CartesianGrid stroke={CHART_GRID} strokeDasharray="4 4" horizontal={false} />
-            <XAxis type="number" tick={axisTick} stroke={CHART_GRID} tickFormatter={fmt.inr} />
+            <XAxis type="number" tick={axisTick} stroke={CHART_GRID} tickFormatter={selectedTopKeywordMetric.tickFormat} />
             <YAxis type="category" dataKey="key" tick={axisTick} stroke={CHART_GRID} width={144} />
-            <Tooltip content={<TooltipCard valFmt={(_, value) => fmt.inrFull(value)} />} />
-            <Bar dataKey="spend" name="Spend" radius={[0, 12, 12, 0]} isAnimationActive={false}>
-              {keywords.slice(0, 15).map((keyword) => (
+            <Tooltip content={<TooltipCard valFmt={(_, value) => selectedTopKeywordMetric.format(value)} />} />
+            <Bar dataKey="metricValue" name={selectedTopKeywordMetric.label} radius={[0, 12, 12, 0]} isAnimationActive={false}>
+              {topKeywordRows.map((keyword) => (
                 <Cell key={keyword.key} fill={roasTone(keyword.roas).color} />
               ))}
-              <LabelList dataKey="roasLabel" position="right" formatter={(value) => `${value}x`} fill={CHART_TEXT} fontSize={11} />
+              <LabelList dataKey="metricLabel" position="right" fill={CHART_TEXT} fontSize={11} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
