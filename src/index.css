@@ -440,17 +440,8 @@ h3 {
 }
 
 .dashboard-topbar-shell {
-  position: sticky;
-  top: 12px;
-  z-index: 30;
-  overflow: hidden;
-  max-height: calc(var(--topbar-height, 999px) + 2px);
-  will-change: max-height;
-  transition: max-height 220ms var(--ease-out-soft);
-}
-
-.dashboard-topbar-shell.is-hidden {
-  max-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .dashboard-topbar {
@@ -460,19 +451,7 @@ h3 {
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(16px);
   overflow: hidden;
-  will-change: transform;
-  transition:
-    transform 220ms var(--ease-out-soft),
-    opacity 180ms ease;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
   animation: surfaceLiftIn 420ms var(--ease-out-soft) both;
-}
-
-.dashboard-topbar-shell.is-hidden .dashboard-topbar {
-  transform: translate3d(0, calc(-1 * (var(--topbar-height, 0px) + 20px)), 0);
-  opacity: 0;
-  pointer-events: none;
 }
 
 .dashboard-topbar__main,
