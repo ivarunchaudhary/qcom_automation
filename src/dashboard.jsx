@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   BRAND_COLORS,
   ROAS_TARGET,
@@ -33,122 +33,7 @@ export default function Dashboard({ data, onReset }) {
   const [endDate, setEndDate] = useState(allDates[allDates.length - 1]);
   const [brandFilter, setBrandFilter] = useState("All");
   const [tab, setTab] = useState("overview");
-  const [isTopbarHidden, setIsTopbarHidden] = useState(false);
-  const [topbarHeight, setTopbarHeight] = useState(0);
   const [isPending, startTransition] = useTransition();
-  const topbarRef = useRef(null);
-  const lastScrollYRef = useRef(0);
-  const scrollFrameRef = useRef(0);
-  const isTopbarHiddenRef = useRef(false);
-  const scrollDirectionRef = useRef(0);
-  const directionTravelRef = useRef(0);
-  const lastToggleTimeRef = useRef(0);
-
-  useEffect(() => {
-    const MIN_SCROLL_DELTA = 2;
-    const RESET_TOP_OFFSET = 24;
-    const HIDE_AFTER_SCROLL = 56;
-    const SHOW_AFTER_SCROLL = 34;
-    const TRANSITION_LOCK_MS = 260;
-
-    lastScrollYRef.current = window.scrollY;
-    scrollDirectionRef.current = 0;
-    directionTravelRef.current = 0;
-    lastToggleTimeRef.current = 0;
-
-    const handleScroll = () => {
-      if (scrollFrameRef.current) return;
-
-      scrollFrameRef.current = window.requestAnimationFrame(() => {
-        const currentScrollY = Math.max(window.scrollY, 0);
-        const scrollDelta = currentScrollY - lastScrollYRef.current;
-        let nextHidden = isTopbarHiddenRef.current;
-        const now = Date.now();
-
-        if (Math.abs(scrollDelta) < MIN_SCROLL_DELTA) {
-          lastScrollYRef.current = currentScrollY;
-          scrollFrameRef.current = 0;
-          return;
-        }
-
-        if (now - lastToggleTimeRef.current < TRANSITION_LOCK_MS) {
-          lastScrollYRef.current = currentScrollY;
-          scrollFrameRef.current = 0;
-          return;
-        }
-
-        if (currentScrollY <= RESET_TOP_OFFSET) {
-          nextHidden = false;
-          scrollDirectionRef.current = 0;
-          directionTravelRef.current = 0;
-        } else {
-          const direction = scrollDelta > 0 ? 1 : -1;
-
-          if (scrollDirectionRef.current !== direction) {
-            scrollDirectionRef.current = direction;
-            directionTravelRef.current = Math.abs(scrollDelta);
-          } else {
-            directionTravelRef.current += Math.abs(scrollDelta);
-          }
-
-          if (!nextHidden && direction === 1 && directionTravelRef.current >= HIDE_AFTER_SCROLL) {
-            nextHidden = true;
-            directionTravelRef.current = 0;
-            lastToggleTimeRef.current = now;
-          } else if (nextHidden && direction === -1 && directionTravelRef.current >= SHOW_AFTER_SCROLL) {
-            nextHidden = false;
-            directionTravelRef.current = 0;
-            lastToggleTimeRef.current = now;
-          }
-        }
-
-        lastScrollYRef.current = currentScrollY;
-        scrollFrameRef.current = 0;
-
-        isTopbarHiddenRef.current = nextHidden;
-        setIsTopbarHidden((current) => (current === nextHidden ? current : nextHidden));
-      });
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (scrollFrameRef.current) {
-        window.cancelAnimationFrame(scrollFrameRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const topbarElement = topbarRef.current;
-    if (!topbarElement) return;
-
-    const syncTopbarHeight = () => {
-      setTopbarHeight((currentHeight) => {
-        const nextHeight = Math.round(topbarElement.getBoundingClientRect().height);
-        return currentHeight === nextHeight ? currentHeight : nextHeight;
-      });
-    };
-
-    syncTopbarHeight();
-
-    const resizeObserver = new ResizeObserver(() => {
-      syncTopbarHeight();
-    });
-
-    resizeObserver.observe(topbarElement);
-    window.addEventListener("resize", syncTopbarHeight);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", syncTopbarHeight);
-    };
-  }, []);
-
-  const topbarStyle = useMemo(
-    () => (topbarHeight ? { "--topbar-height": `${topbarHeight}px` } : undefined),
-    [topbarHeight],
-  );
 
   const filtered = useMemo(() => {
     let rows = data.filter((row) => row.date >= startDate && row.date <= endDate);
@@ -279,11 +164,8 @@ export default function Dashboard({ data, onReset }) {
 
   return (
     <div className={`dashboard-page${isPending ? " is-pending" : ""}`}>
-      <div
-        className={`dashboard-topbar-shell${isTopbarHidden ? " is-hidden" : ""}`}
-        style={topbarStyle}
-      >
-        <header ref={topbarRef} className="dashboard-topbar">
+      <div className="dashboard-topbar-shell">
+        <header className="dashboard-topbar">
           <div className="dashboard-topbar__main">
             <div className="dashboard-brand">
               <div className="dashboard-brand__mark">IS</div>
