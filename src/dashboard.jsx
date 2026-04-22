@@ -203,7 +203,7 @@ export default function Dashboard({ data, onReset }) {
               <span className="toolbar-label">Brand filters</span>
               <div className="toolbar-pills">
                 {allBrands.map((brand) => {
-                  const color = BRAND_COLORS[brand] || "#e66a2c";
+                  const color = BRAND_COLORS[brand] || "#b47a33";
                   return (
                     <button
                       key={brand}
@@ -256,7 +256,7 @@ export default function Dashboard({ data, onReset }) {
                 }}
               >
                 <span>{item.label}</span>
-                {item.badge ? <Badge label={String(item.badge)} color="#c78514" /> : null}
+                {item.badge ? <Badge label={String(item.badge)} color="#b47a33" /> : null}
               </button>
             ))}
           </div>
@@ -276,43 +276,43 @@ export default function Dashboard({ data, onReset }) {
           label="Total spend"
           value={fmt.inr(kpis.spend)}
           sub={`${fmt.num(groupedData.activeSpendRows)} active rows`}
-          accent="#e66a2c"
+          accent="#b47a33"
         />
         <MetricCard
           label="Total GMV"
           value={fmt.inr(kpis.gmv)}
           sub={`AOV ${fmt.inr(kpis.aov)}`}
-          accent="#14976e"
+          accent="#2f3744"
         />
         <MetricCard
           label="Impressions"
           value={fmt.num(kpis.imp)}
           sub={`CPM ${fmt.inr2(kpis.cpm)}`}
-          accent="#4d61ff"
+          accent="#66758a"
         />
         <MetricCard
           label="Clicks"
           value={fmt.num(kpis.clks)}
           sub={`CTR ${fmt.pct(kpis.ctr)} · CPC ${fmt.inr2(kpis.cpc)}`}
-          accent="#b4933f"
+          accent="#8d8479"
         />
         <MetricCard
           label="Add to carts"
           value={fmt.num(kpis.a2c)}
           sub={`ATCR ${fmt.pct(kpis.atcr)}`}
-          accent="#14976e"
+          accent="#66758a"
         />
         <MetricCard
           label="Conversions"
           value={fmt.num(kpis.conv)}
           sub={`CVR ${fmt.pct(kpis.cvr)} · CPO ${fmt.inr(kpis.cpo)}`}
-          accent="#c78514"
+          accent="#b47a33"
         />
         <MetricCard
           label="Direct GMV 7D"
           value={fmt.inr(kpis.gmv7)}
           sub="Attribution snapshot"
-          accent="#4d61ff"
+          accent="#2f3744"
         />
       </section>
 

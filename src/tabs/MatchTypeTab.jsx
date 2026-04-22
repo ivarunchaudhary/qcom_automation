@@ -213,8 +213,8 @@ function MatchTypeTab({ matchTypes }) {
               <YAxis tick={axisTick} stroke={CHART_GRID} tickFormatter={fmt.inr} />
               <Tooltip content={<TooltipCard valFmt={(_, value) => fmt.inrFull(value)} />} />
               <Legend wrapperStyle={chartLegendStyle} />
-              <Bar dataKey="spend" name="Spend" fill="#e66a2c" radius={[12, 12, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="gmv" name="GMV" fill="#14976e" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="spend" name="Spend" fill="#b47a33" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="gmv" name="GMV" fill="#66758a" radius={[12, 12, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -233,9 +233,9 @@ function MatchTypeTab({ matchTypes }) {
               <YAxis tick={axisTick} stroke={CHART_GRID} tickFormatter={(value) => `${value.toFixed(1)}%`} />
               <Tooltip content={<TooltipCard valFmt={(_, value) => fmt.pct(value)} />} />
               <Legend wrapperStyle={chartLegendStyle} />
-              <Bar dataKey="ctr" name="CTR" fill="#e66a2c" radius={[12, 12, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="atcr" name="ATCR" fill="#4d61ff" radius={[12, 12, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="cvr" name="CVR" fill="#14976e" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="ctr" name="CTR" fill="#b47a33" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="atcr" name="ATCR" fill="#2f3744" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="cvr" name="CVR" fill="#66758a" radius={[12, 12, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>

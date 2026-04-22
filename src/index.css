@@ -1,21 +1,22 @@
 :root {
-  --bg: #f5f1ea;
-  --bg-soft: #fbf8f3;
-  --surface: rgba(255, 255, 255, 0.9);
+  --bg: #f3f5f8;
+  --bg-soft: #fafbfd;
+  --surface: rgba(255, 255, 255, 0.98);
   --surface-solid: #ffffff;
-  --surface-muted: #f8f3ec;
-  --line: #eadfce;
-  --line-strong: #dacbb8;
-  --text: #231d17;
-  --text-soft: #5e554d;
-  --text-muted: #7f756b;
-  --accent: #e66a2c;
-  --accent-strong: #cb5418;
+  --surface-muted: #f5f7fa;
+  --line: #e2e7ee;
+  --line-strong: #ced6df;
+  --text: #171a1f;
+  --text-soft: #596171;
+  --text-muted: #8a92a3;
+  --accent: #b47a33;
+  --accent-strong: #956229;
   --success: #14976e;
   --warn: #c78514;
   --danger: #c63d2f;
-  --shadow-soft: 0 18px 45px rgba(96, 63, 27, 0.08);
-  --shadow-subtle: 0 10px 25px rgba(96, 63, 27, 0.05);
+  --shadow-soft: 0 20px 45px rgba(18, 24, 39, 0.08);
+  --shadow-subtle: 0 10px 24px rgba(18, 24, 39, 0.05);
+  --shadow-raised: 0 32px 72px rgba(18, 24, 39, 0.1);
   --radius-xl: 32px;
   --radius-lg: 24px;
   --radius-md: 18px;
@@ -54,10 +55,7 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(230, 106, 44, 0.14), transparent 26%),
-    radial-gradient(circle at top right, rgba(77, 97, 255, 0.08), transparent 22%),
-    linear-gradient(180deg, #f8f4ee 0%, #f5f1ea 24%, #f7f3ed 100%);
+  background: linear-gradient(180deg, #fcfdff 0%, #f4f6f9 42%, #fafbfd 100%);
   overscroll-behavior-y: none;
 }
 
@@ -128,11 +126,11 @@ h3 {
 .upload-panel {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(234, 223, 206, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(250, 251, 253, 0.99));
+  border: 1px solid rgba(226, 231, 238, 0.96);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-raised);
+  backdrop-filter: blur(10px);
 }
 
 .upload-hero {
@@ -150,8 +148,8 @@ h3 {
   position: absolute;
   inset: 0 auto auto 0;
   width: 100%;
-  height: 140px;
-  background: linear-gradient(135deg, rgba(230, 106, 44, 0.14), rgba(230, 106, 44, 0));
+  height: 180px;
+  background: linear-gradient(180deg, rgba(243, 246, 250, 0.9), rgba(255, 255, 255, 0));
   pointer-events: none;
 }
 
@@ -163,13 +161,15 @@ h3 {
   display: grid;
   place-items: center;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 243, 236, 0.9)),
-    linear-gradient(145deg, rgba(230, 106, 44, 0.18), rgba(255, 255, 255, 0));
-  border: 1px solid rgba(230, 106, 44, 0.22);
+    linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(244, 247, 251, 0.96)),
+    linear-gradient(145deg, rgba(180, 122, 51, 0.05), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(226, 231, 238, 0.96);
   color: var(--accent);
   font-weight: 800;
   letter-spacing: 0.08em;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 24px rgba(18, 24, 39, 0.06);
 }
 
 .upload-copy {
@@ -224,9 +224,9 @@ h3 {
   padding: 22px;
   border-radius: 26px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 243, 236, 0.88)),
+    linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(246, 249, 252, 0.98)),
     var(--surface-solid);
-  border: 1px solid rgba(234, 223, 206, 0.96);
+  border: 1px solid rgba(226, 231, 238, 0.94);
   box-shadow: var(--shadow-subtle);
 }
 
@@ -239,8 +239,8 @@ h3 {
 .upload-preview__grid div {
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(234, 223, 206, 0.85);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(226, 231, 238, 0.9);
   display: grid;
   gap: 8px;
 }
@@ -343,10 +343,10 @@ h3 {
   gap: 12px;
   justify-items: start;
   padding: 30px;
-  border: 1.5px dashed rgba(230, 106, 44, 0.26);
+  border: 1.5px dashed rgba(163, 173, 187, 0.48);
   border-radius: 24px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 243, 236, 0.84)),
+    linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(246, 249, 252, 0.98)),
     var(--surface-solid);
   color: var(--text);
   text-align: left;
@@ -361,8 +361,8 @@ h3 {
 .dropzone:hover,
 .dropzone.is-dragging {
   transform: translateY(-2px);
-  border-color: rgba(230, 106, 44, 0.48);
-  box-shadow: 0 22px 40px rgba(230, 106, 44, 0.12);
+  border-color: rgba(180, 122, 51, 0.32);
+  box-shadow: 0 26px 48px rgba(18, 24, 39, 0.08);
 }
 
 .dropzone strong {
@@ -378,8 +378,8 @@ h3 {
   display: inline-flex;
   padding: 8px 13px;
   border-radius: 999px;
-  background: rgba(230, 106, 44, 0.1);
-  color: var(--accent);
+  background: rgba(23, 26, 31, 0.05);
+  color: var(--text);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -400,8 +400,8 @@ h3 {
 .upload-footnote__pill {
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(234, 223, 206, 0.92);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(226, 231, 238, 0.9);
   color: var(--text-soft);
   font-size: 12px;
   font-weight: 700;
@@ -423,8 +423,8 @@ h3 {
   margin-top: 24px;
   padding: 16px 18px;
   border-radius: 18px;
-  border: 1px solid rgba(234, 223, 206, 0.9);
-  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(226, 231, 238, 0.94);
+  background: rgba(255, 255, 255, 0.95);
   box-shadow: var(--shadow-subtle);
   display: flex;
   align-items: center;
@@ -445,11 +445,11 @@ h3 {
 }
 
 .dashboard-topbar {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(234, 223, 206, 0.96);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(249, 251, 253, 0.99));
+  border: 1px solid rgba(226, 231, 238, 0.98);
   border-radius: 30px;
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-raised);
+  backdrop-filter: blur(10px);
   overflow: hidden;
   animation: surfaceLiftIn 420ms var(--ease-out-soft) both;
 }
@@ -466,7 +466,7 @@ h3 {
   justify-content: space-between;
   gap: 18px;
   padding: 24px 26px 18px;
-  border-bottom: 1px solid rgba(234, 223, 206, 0.8);
+  border-bottom: 1px solid rgba(226, 231, 238, 0.92);
 }
 
 .dashboard-brand {
@@ -491,8 +491,8 @@ h3 {
   min-width: 170px;
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(234, 223, 206, 0.9);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(226, 231, 238, 0.94);
   display: grid;
   gap: 6px;
   box-shadow: var(--shadow-subtle);
@@ -515,7 +515,7 @@ h3 {
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: 16px;
   padding: 18px 26px;
-  border-bottom: 1px solid rgba(234, 223, 206, 0.8);
+  border-bottom: 1px solid rgba(226, 231, 238, 0.92);
 }
 
 .toolbar-block {
@@ -562,8 +562,8 @@ h3 {
 .ghost-button,
 .tab-button {
   border-radius: 999px;
-  border: 1px solid rgba(218, 203, 184, 0.92);
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(206, 214, 223, 0.92);
+  background: rgba(255, 255, 255, 0.98);
   color: var(--text-soft);
   cursor: pointer;
   box-shadow: var(--shadow-subtle);
@@ -573,8 +573,8 @@ h3 {
   padding: 10px 14px;
   font-size: 12px;
   font-weight: 700;
-  background: var(--pill-bg, rgba(255, 255, 255, 0.82));
-  border-color: var(--pill-border, rgba(218, 203, 184, 0.92));
+  background: var(--pill-bg, rgba(255, 255, 255, 0.98));
+  border-color: var(--pill-border, rgba(206, 214, 223, 0.92));
   color: var(--pill-text, var(--text-soft));
 }
 
@@ -587,9 +587,9 @@ h3 {
 .pill-button.is-active,
 .ghost-button:hover,
 .tab-button.is-active {
-  background: rgba(230, 106, 44, 0.1);
-  border-color: rgba(230, 106, 44, 0.24);
-  color: var(--accent);
+  background: rgba(180, 122, 51, 0.08);
+  border-color: rgba(180, 122, 51, 0.24);
+  color: var(--text);
 }
 
 .pill-button:hover,
@@ -615,8 +615,8 @@ h3 {
 .date-input {
   padding: 11px 14px;
   border-radius: 16px;
-  border: 1px solid rgba(218, 203, 184, 0.92);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(206, 214, 223, 0.92);
+  background: rgba(255, 255, 255, 1);
   color: var(--text);
   box-shadow: var(--shadow-subtle);
 }
@@ -627,7 +627,7 @@ h3 {
 .tab-button:focus-visible,
 .primary-button:focus-visible,
 .dropzone:focus-visible {
-  outline: 2px solid rgba(230, 106, 44, 0.26);
+  outline: 2px solid rgba(197, 122, 38, 0.24);
   outline-offset: 2px;
 }
 
@@ -658,13 +658,13 @@ h3 {
   background: linear-gradient(180deg, var(--accent), var(--accent-strong));
   color: white;
   cursor: pointer;
-  box-shadow: 0 16px 26px rgba(230, 106, 44, 0.18);
+  box-shadow: 0 18px 34px rgba(197, 122, 38, 0.24);
 }
 
 .primary-button.secondary {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.98);
   color: var(--text);
-  border: 1px solid rgba(218, 203, 184, 0.92);
+  border: 1px solid rgba(206, 214, 223, 0.92);
   box-shadow: var(--shadow-subtle);
 }
 
@@ -728,8 +728,8 @@ h3 {
 .panel {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(234, 223, 206, 0.95);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(249, 251, 253, 0.99));
+  border: 1px solid rgba(226, 231, 238, 0.96);
   border-radius: 26px;
   box-shadow: var(--shadow-soft);
   content-visibility: auto;
@@ -755,13 +755,13 @@ h3 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, var(--metric-tint, rgba(230, 106, 44, 0.08)), transparent 44%);
+    linear-gradient(180deg, var(--metric-tint, rgba(23, 26, 31, 0.03)), transparent 56%);
   pointer-events: none;
 }
 
 .metric-card--featured {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 243, 236, 0.96)),
+    linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 244, 238, 0.98)),
     white;
 }
 
@@ -808,8 +808,8 @@ h3 {
   min-height: 28px;
   padding: 7px 11px;
   border-radius: 999px;
-  border: 1px solid var(--badge-border, rgba(230, 106, 44, 0.2));
-  background: var(--badge-bg, rgba(230, 106, 44, 0.1));
+  border: 1px solid var(--badge-border, rgba(180, 122, 51, 0.18));
+  background: var(--badge-bg, rgba(180, 122, 51, 0.08));
   color: var(--badge-color, var(--accent));
   font-size: 11px;
   font-weight: 800;
@@ -904,9 +904,9 @@ h3 {
   min-width: 180px;
   padding: 12px 14px;
   border-radius: 18px;
-  border: 1px solid rgba(234, 223, 206, 0.95);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 34px rgba(96, 63, 27, 0.14);
+  border: 1px solid rgba(226, 231, 238, 0.94);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 36px rgba(18, 24, 39, 0.12);
 }
 
 .chart-tooltip__label {
@@ -953,15 +953,15 @@ h3 {
 }
 
 .data-table thead {
-  background: rgba(248, 243, 236, 0.9);
+  background: rgba(247, 249, 252, 0.98);
 }
 
 .data-table tbody tr {
-  border-top: 1px solid rgba(234, 223, 206, 0.88);
+  border-top: 1px solid rgba(226, 231, 238, 0.86);
 }
 
 .data-table tbody tr:nth-child(even) {
-  background: rgba(250, 247, 242, 0.54);
+  background: rgba(249, 251, 253, 0.9);
 }
 
 .data-table__th,
@@ -998,7 +998,7 @@ h3 {
 }
 
 .table-sort-button:focus-visible {
-  outline: 2px solid rgba(230, 106, 44, 0.26);
+  outline: 2px solid rgba(197, 122, 38, 0.24);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -1040,7 +1040,7 @@ h3 {
   width: 82px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(218, 203, 184, 0.68);
+  background: rgba(214, 220, 229, 0.82);
   overflow: hidden;
 }
 
@@ -1058,7 +1058,7 @@ h3 {
 .stack-list__item {
   align-items: center;
   padding: 14px 0;
-  border-top: 1px solid rgba(234, 223, 206, 0.88);
+  border-top: 1px solid rgba(226, 231, 238, 0.86);
 }
 
 .stack-list__item:first-child {
@@ -1097,7 +1097,7 @@ h3 {
 
 .metric-list__row {
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(234, 223, 206, 0.75);
+  border-bottom: 1px solid rgba(226, 231, 238, 0.82);
 }
 
 .metric-list__row strong,
@@ -1113,7 +1113,7 @@ h3 {
 .inline-metric--summary {
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid rgba(234, 223, 206, 0.85);
+  border-top: 1px solid rgba(226, 231, 238, 0.86);
 }
 
 .note-list {
@@ -1130,14 +1130,14 @@ h3 {
 
 .insight-panel.danger {
   background:
-    linear-gradient(180deg, rgba(198, 61, 47, 0.06), rgba(255, 255, 255, 0.92) 34%),
-    rgba(255, 255, 255, 0.92);
+    linear-gradient(180deg, rgba(198, 61, 47, 0.035), rgba(255, 255, 255, 1) 30%),
+    rgba(255, 255, 255, 1);
 }
 
 .insight-panel.success {
   background:
-    linear-gradient(180deg, rgba(20, 151, 110, 0.06), rgba(255, 255, 255, 0.92) 34%),
-    rgba(255, 255, 255, 0.92);
+    linear-gradient(180deg, rgba(20, 151, 110, 0.035), rgba(255, 255, 255, 1) 30%),
+    rgba(255, 255, 255, 1);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1155,17 +1155,17 @@ h3 {
   .metric-card:hover,
   .upload-preview__grid div:hover {
     transform: translateY(-3px);
-    box-shadow: 0 22px 38px rgba(96, 63, 27, 0.1);
+    box-shadow: 0 24px 42px rgba(18, 24, 39, 0.08);
   }
 
   .panel:hover {
-    border-color: rgba(230, 106, 44, 0.22);
-    box-shadow: 0 22px 42px rgba(96, 63, 27, 0.09);
+    border-color: rgba(197, 122, 38, 0.18);
+    box-shadow: 0 24px 46px rgba(18, 24, 39, 0.08);
   }
 
   .upload-footnote__pill:hover {
     transform: translateY(-1px);
-    border-color: rgba(230, 106, 44, 0.24);
+    border-color: rgba(197, 122, 38, 0.2);
   }
 }
 
@@ -1290,7 +1290,7 @@ h3 {
   justify-content: space-between;
   align-items: center;
   padding: 14px 22px;
-  border-top: 1px solid rgba(234, 223, 206, 0.88);
+  border-top: 1px solid rgba(226, 231, 238, 0.86);
   color: var(--text-muted);
   font-size: 13px;
 }

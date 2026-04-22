@@ -1,23 +1,23 @@
 // Color maps
 
 export const BRAND_COLORS = {
-  NIC: "#e66a2c",
-  Grameen: "#14976e",
-  CP: "#4d61ff",
-  Other: "#b4933f",
+  NIC: "#b47a33",
+  Grameen: "#66758a",
+  CP: "#2f3744",
+  Other: "#8d8479",
 };
 
 export const ADTYPE_COLORS = {
-  "Keyword Based Ads": "#e66a2c",
-  "Search Inline Banner": "#4d61ff",
-  "Browse Boost Item Ads": "#14976e",
-  YGTI: "#b4933f",
+  "Keyword Based Ads": "#b47a33",
+  "Search Inline Banner": "#2f3744",
+  "Browse Boost Item Ads": "#66758a",
+  YGTI: "#8d8479",
 };
 
 export const MT_COLORS = {
-  KEYWORD_MATCH_TYPE_BROAD: "#e66a2c",
-  KEYWORD_MATCH_TYPE_EXACT: "#14976e",
-  KEYWORD_MATCH_TYPE_INVALID: "#9a8e83",
+  KEYWORD_MATCH_TYPE_BROAD: "#b47a33",
+  KEYWORD_MATCH_TYPE_EXACT: "#66758a",
+  KEYWORD_MATCH_TYPE_INVALID: "#8d8479",
 };
 
 export const MT_LABELS = {
@@ -33,9 +33,9 @@ export const TABLE_PREVIEW_LIMIT = 60;
 
 // Chart style constants
 
-export const CHART_GRID = "#ebe3d8";
-export const CHART_AXIS = "#7d736a";
-export const CHART_TEXT = "#5c544d";
+export const CHART_GRID = "#e3e8ee";
+export const CHART_AXIS = "#7d8696";
+export const CHART_TEXT = "#4e5766";
 export const chartLegendStyle = { fontSize: 12, color: CHART_TEXT };
 export const axisTick = { fill: CHART_AXIS, fontSize: 11 };
 
@@ -130,10 +130,10 @@ export function cleanProductName(name) {
 }
 
 export function roasTone(roas) {
-  if (roas < 1) return { color: "#c63d2f", label: "Critical" };
-  if (roas < ROAS_TARGET) return { color: "#c78514", label: "Watch" };
-  if (roas >= 6) return { color: "#14976e", label: "Strong" };
-  return { color: "#a76f0a", label: "Stable" };
+  if (roas < 1) return { color: "#b44c3f", label: "Critical" };
+  if (roas < ROAS_TARGET) return { color: "#b47a33", label: "Watch" };
+  if (roas >= 6) return { color: "#4d6f62", label: "Strong" };
+  return { color: "#6d7482", label: "Stable" };
 }
 
 // Aggregation engine

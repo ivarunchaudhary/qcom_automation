@@ -230,9 +230,9 @@ function OverviewTab({ daily }) {
               <Line
                 type="monotone"
                 dataKey={dailyMetric}
-                stroke="#e66a2c"
+                stroke="#2f3744"
                 strokeWidth={3}
-                dot={{ fill: "#e66a2c", r: 4 }}
+                dot={{ fill: "#2f3744", r: 4 }}
                 activeDot={{ r: 6 }}
                 isAnimationActive={false}
               />
@@ -254,8 +254,8 @@ function OverviewTab({ daily }) {
               <YAxis tick={axisTick} stroke={CHART_GRID} tickFormatter={fmt.inr} />
               <Tooltip content={<TooltipCard valFmt={(_, value) => fmt.inrFull(value)} />} />
               <Legend wrapperStyle={chartLegendStyle} />
-              <Bar dataKey="spend" name="Spend" fill="#e66a2c" radius={[12, 12, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="gmv" name="GMV" fill="#14976e" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="spend" name="Spend" fill="#b47a33" radius={[12, 12, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="gmv" name="GMV" fill="#66758a" radius={[12, 12, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>

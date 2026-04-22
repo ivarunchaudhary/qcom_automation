@@ -226,7 +226,7 @@ function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaign
               <p className="panel-label">Scale budget</p>
               <h3 className="panel-title">Star campaigns</h3>
             </div>
-            <Badge label={String(starCampaigns.length)} color="#14976e" />
+            <Badge label={String(starCampaigns.length)} color="#2f3744" />
           </div>
           <div className="table-panel table-panel--flush">
             <table className="data-table">
@@ -248,7 +248,7 @@ function CampaignsTab({ campaigns: rawCampaigns, bleedingCampaigns, starCampaign
                     </Td>
                     <Td right>{fmt.inr(campaign.spend)}</Td>
                     <Td right>{fmt.inr(campaign.gmv)}</Td>
-                    <Td right accent color="#14976e">
+                    <Td right accent color="#2f3744">
                       {fmt.x(campaign.roas)}
                     </Td>
                     <Td right>{fmt.num(campaign.conv)}</Td>
