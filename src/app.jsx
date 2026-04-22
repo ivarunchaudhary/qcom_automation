@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState, useTransition } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 
 const Dashboard = lazy(() => import("./dashboard.jsx"));
 
@@ -7,6 +7,7 @@ const UPLOAD_FEATURES = [
   "Brand, ad-type, and keyword cuts with clear action prompts.",
   "Cleaner product, match-type, and city views for quick operator scans.",
 ];
+const CSV_PARSE_TIMEOUT_MS = 45000;
 
 function stripToMetricsHeader(chunk) {
   const lines = chunk.split(/\r?\n/);
@@ -21,13 +22,30 @@ async function parseInstamartFile(file) {
   const csvText = stripToMetricsHeader(rawText);
 
   return new Promise((resolve, reject) => {
+    let isSettled = false;
+    const finishResolve = (value) => {
+      if (isSettled) return;
+      isSettled = true;
+      window.clearTimeout(parseTimeout);
+      resolve(value);
+    };
+    const finishReject = (error) => {
+      if (isSettled) return;
+      isSettled = true;
+      window.clearTimeout(parseTimeout);
+      reject(error);
+    };
+    const parseTimeout = window.setTimeout(() => {
+      finishReject(new Error("Parsing timed out. Please try a smaller CSV export."));
+    }, CSV_PARSE_TIMEOUT_MS);
+
     Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true,
-      worker: true,
+      worker: false,
       complete: (results) => {
         if (!results.meta.fields?.includes("METRICS_DATE")) {
-          reject(new Error("Could not find the Instamart metrics header row."));
+          finishReject(new Error("Could not find the Instamart metrics header row."));
           return;
         }
 
@@ -35,10 +53,10 @@ async function parseInstamartFile(file) {
           Object.values(row).some((value) => String(value || "").trim()),
         );
 
-        resolve(rows);
+        finishResolve(rows);
       },
       error: (error) => {
-        reject(error);
+        finishReject(error);
       },
     });
   });
@@ -102,7 +120,7 @@ function DashboardLoadingState() {
   );
 }
 
-function UploadScreen({ onLoad, isPending }) {
+function UploadScreen({ onLoad }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -136,7 +154,7 @@ function UploadScreen({ onLoad, isPending }) {
     }
   };
 
-  const isBusy = loading || isPending;
+  const isBusy = loading;
 
   return (
     <div className="upload-page">
@@ -241,16 +259,12 @@ function UploadScreen({ onLoad, isPending }) {
 
 export default function App() {
   const [data, setData] = useState(null);
-  const [isPending, startTransition] = useTransition();
 
   if (!data) {
     return (
       <UploadScreen
-        isPending={isPending}
         onLoad={(nextData) => {
-          startTransition(() => {
-            setData(nextData);
-          });
+          setData(nextData);
         }}
       />
     );
